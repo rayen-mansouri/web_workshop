@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Brute Force Lab — Securinets Esprit</title>
+<style>
+:root{
+  --red:#b31217; --red-dark:#7a0d10; --red-light:#e23a3e;
+  --bg:#ffffff; --bg2:#f7f3f3; --ink:#161414; --ink2:#5a5252;
+  --line:#e7dede; --danger:#b31217; --safe:#1d7a4a; --mono:ui-monospace,Consolas,monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#141011; --bg2:#1c1617; --ink:#f2eaea; --ink2:#c9b9b9; --line:#3a2b2c; }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,sans-serif;line-height:1.6;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.hero{
+  background:
+    radial-gradient(circle at 20px 20px, var(--red) 1.4px, transparent 1.6px) 0 0/16px 16px,
+    linear-gradient(180deg,var(--ink) 0%, var(--red-dark) 70%, var(--red) 100%);
+  color:#fff;padding:3rem 1.5rem 2.5rem;text-align:center
+}
+.hero h1{margin:.2rem 0;font-size:clamp(28px,5vw,42px);letter-spacing:1px}
+.hero h1 span{color:#ffd9d9}
+.hero p{color:#f0d6d6;max-width:620px;margin:.6rem auto 0;font-size:15px}
+.badge{display:inline-block;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.35);
+  border-radius:999px;padding:4px 14px;font-size:12px;letter-spacing:2px;text-transform:uppercase}
+main{max-width:780px;margin:0 auto;padding:1.5rem}
+section{margin:2.5rem 0;padding-top:.5rem}
+h2{font-size:21px;border-left:4px solid var(--red);padding-left:10px;margin-bottom:.3rem}
+.step{color:var(--red);font-weight:700;font-size:13px;letter-spacing:1px;text-transform:uppercase}
+p.lead{color:var(--ink2);font-size:15px}
+.card{background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:1.1rem 1.2rem;margin:1rem 0}
+pre{font-family:var(--mono);font-size:13.5px;white-space:pre-wrap;word-break:break-word;margin:0;line-height:1.7}
+.tag{color:var(--ink2)}
+.kw{color:var(--red-light);font-weight:600}
+input[type=text]{width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid var(--line);
+  background:var(--bg);color:var(--ink);font-family:var(--mono);font-size:14px}
+input[type=text]:focus{outline:2px solid var(--red-light);border-color:var(--red-light)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:.7rem}
+button{background:var(--red);color:#fff;border:0;border-radius:10px;padding:10px 16px;
+  font-size:13.5px;font-weight:600;cursor:pointer}
+button.ghost{background:transparent;border:1.5px solid var(--red);color:var(--red)}
+button:active{transform:scale(.97)}
+button:disabled{opacity:.45;cursor:not-allowed}
+.status{font-size:13px;font-weight:600;padding:8px 12px;border-radius:8px;margin-top:.6rem;display:none}
+.status.safe{display:block;background:#e4f5ec;color:var(--safe)}
+.status.danger{display:block;background:#fbe2e2;color:var(--danger)}
+@media (prefers-color-scheme: dark){.status.safe{background:#123324}.status.danger{background:#3a1214}}
+footer{text-align:center;color:var(--ink2);font-size:12px;padding:2rem 1rem}
+
+/* shared animation system */
+.xv-wrap{margin-top:1.1rem;border:1px solid var(--line);border-radius:14px;padding:14px 16px;background:var(--bg2)}
+.xv-title{font-size:11.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink2);font-weight:700;margin-bottom:10px}
+.xv-boundary{position:relative;display:flex;gap:0;border-radius:10px;overflow:hidden;border:1.5px solid var(--line)}
+.xv-zone{flex:1;padding:16px 12px;text-align:center;font-size:12.5px;color:var(--ink2);position:relative;background:var(--bg);transition:background .35s,color .35s}
+.xv-zone .xv-ico{font-size:22px;display:block;margin-bottom:4px}
+.xv-zone.xv-data{border-right:1.5px dashed var(--line)}
+.xv-zone.xv-code.xv-hot{background:var(--red);color:#fff}
+.xv-zone.xv-code.xv-hot .xv-ico{animation:xv-shake .4s ease}
+.xv-zone.xv-data.xv-calm{background:#e4f5ec}
+@media (prefers-color-scheme: dark){.xv-zone.xv-data.xv-calm{background:#123324}}
+.xv-ball{position:absolute;top:50%;left:8%;width:12px;height:12px;border-radius:50%;background:var(--red);
+  transform:translate(0,-50%) scale(0);z-index:2}
+.xv-caption{text-align:center;font-size:12px;color:var(--ink2);margin-top:8px;min-height:16px}
+@keyframes xv-shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-3px) rotate(-6deg)}75%{transform:translateX(3px) rotate(6deg)}}
+
+.xv-tl{display:flex;flex-direction:column;gap:0;margin-top:4px}
+.xv-tlrow{display:flex;gap:10px;align-items:flex-start;opacity:.25;transform:translateX(-6px);transition:opacity .35s,transform .35s}
+.xv-tlrow.on{opacity:1;transform:none}
+.xv-tlnum{flex:0 0 auto;width:22px;height:22px;border-radius:50%;background:var(--bg);border:1.5px solid var(--line);
+  display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--ink2);margin-top:1px}
+.xv-tlrow.on .xv-tlnum{background:var(--red);border-color:var(--red);color:#fff}
+.xv-tltext{font-size:13px;color:var(--ink2);padding-top:2px}
+.xv-tlrow.on .xv-tltext{color:var(--ink)}
+.xv-tlline{width:1.5px;background:var(--line);margin-left:10.25px;height:14px}
+.xv-tlrow.on + .xv-tlline{background:var(--red)}
+.xv-flash{position:relative}
+.xv-flash.xv-pulse::after{content:"";position:absolute;inset:0;border-radius:12px;pointer-events:none;
+  box-shadow:0 0 0 0 rgba(179,18,23,.55);animation:xv-ring .6s ease}
+@keyframes xv-ring{0%{box-shadow:0 0 0 0 rgba(179,18,23,.55)}100%{box-shadow:0 0 0 14px rgba(179,18,23,0)}}
+
+.xv-hijack{display:flex;align-items:center;gap:6px;justify-content:space-between;margin-top:6px}
+.xv-hpanel{flex:1;text-align:center;font-size:12px;color:var(--ink2);padding:10px 6px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg)}
+.xv-hpanel .xv-ico{font-size:24px;display:block;margin-bottom:4px}
+.xv-harrow{flex:0 0 28px;text-align:center;color:var(--red);font-size:18px}
+.xv-harrow span{display:inline-block;animation:xv-drift 1.4s ease-in-out infinite}
+@keyframes xv-drift{0%,100%{transform:translateX(0);opacity:.6}50%{transform:translateX(4px);opacity:1}}
+.xv-hpanel.xv-win{border-color:var(--red);background:#fde3e3}
+@media (prefers-color-scheme: dark){.xv-hpanel.xv-win{background:#4a1416}}
+
+.steps div{opacity:0;transform:translateY(4px);transition:opacity .3s,transform .3s;font-size:13.5px;color:var(--ink2);padding:3px 0}
+.steps div.show{opacity:1;transform:none}
+.steps div b{color:var(--ink)}
+
+/* brute force specific */
+.bf-code{font-family:var(--mono);font-size:13px;line-height:1.9}
+.bf-fixed{color:var(--ink2)}
+.bf-slot{background:#fde3e3;color:#7a0d10;border-radius:4px;padding:1px 3px}
+@media (prefers-color-scheme: dark){.bf-slot{background:#4a1416;color:#ffb3b3}}
+
+.bf-term{border-radius:12px;overflow:hidden;border:1px solid var(--line);margin-top:1rem}
+.bf-term .bar{background:#2a2222;padding:7px 10px;font-size:12px;color:#d8caca;display:flex;gap:6px;align-items:center}
+.bf-term .screen{background:#120e0e;color:#8df0a0;font-family:var(--mono);font-size:12.5px;padding:14px;
+  min-height:90px;white-space:pre-wrap;word-break:break-word;line-height:1.7;max-height:260px;overflow-y:auto}
+.bf-term .screen .err{color:#ff9b9b}
+.bf-term .screen .hdr{color:#ffd9d9}
+.bf-term .screen .ok{color:#8df0a0}
+.bf-term .screen .warn{color:#ffd27a}
+.bf-term .screen .dim{color:#6b7f6f}
+.bf-caret{display:inline-block;width:7px;height:13px;background:#8df0a0;vertical-align:-2px;animation:bf-caret 1s step-end infinite}
+@keyframes bf-caret{50%{opacity:0}}
+.bf-sim-badge{display:inline-block;font-size:10.5px;letter-spacing:1px;text-transform:uppercase;font-weight:700;
+  color:var(--ink2);background:var(--bg2);border:1px solid var(--line);border-radius:999px;padding:2px 9px;margin-left:6px}
+
+.bf-counter-wrap{text-align:center;margin:14px 0}
+.bf-counter{font-family:var(--mono);font-size:clamp(36px,7vw,60px);font-weight:700;color:var(--red);
+  font-variant-numeric:tabular-nums;line-height:1;transition:transform .15s}
+.bf-counter.bump{transform:scale(1.06)}
+.bf-counter-label{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink2);font-weight:700;margin-top:4px}
+
+.bf-progress{height:8px;border-radius:999px;background:var(--line);overflow:hidden;margin-top:10px}
+.bf-progress-fill{height:100%;width:0;background:var(--red);transition:width .2s ease,background .4s}
+.bf-progress-fill.done{background:var(--safe)}
+
+.bf-controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px}
+.bf-controls label{font-size:12.5px;color:var(--ink2);font-weight:600}
+.bf-controls select{padding:8px 10px;border-radius:9px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);
+  font-family:var(--mono);font-size:13px}
+.bf-controls select:focus{outline:2px solid var(--red-light);border-color:var(--red-light)}
+
+.bf-dual{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+@media (max-width:640px){.bf-dual{grid-template-columns:1fr}}
+.bf-dual .bf-term{margin-top:0}
+.bf-dual-head{font-size:11.5px;letter-spacing:1px;text-transform:uppercase;font-weight:700;color:var(--ink2);margin-bottom:6px}
+.bf-dual-head.vuln{color:var(--red)}
+.bf-dual-head.safe{color:var(--safe)}
+
+.bf-pwbox{margin-top:12px}
+.bf-meter{height:12px;border-radius:999px;background:var(--line);overflow:hidden;margin-top:8px}
+.bf-meter-fill{height:100%;width:0;background:var(--red);transition:width .35s,background .35s;border-radius:999px}
+.bf-meter-labels{display:flex;justify-content:space-between;font-size:10.5px;color:var(--ink2);margin-top:4px;letter-spacing:.5px}
+.bf-pw-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:10px}
+.bf-pw-stat{border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg)}
+.bf-pw-stat .k{font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--ink2);font-weight:700}
+.bf-pw-stat .v{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--ink);margin-top:3px}
+.bf-pw-stat .v.bad{color:var(--red)}
+.bf-pw-stat .v.ok{color:var(--safe)}
+
+/* ========== NEW STEP 3: search space explorer ========== */
+.bf-space-controls{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
+@media (max-width:560px){.bf-space-controls{grid-template-columns:1fr}}
+.bf-control-group{display:flex;flex-direction:column;gap:8px}
+.bf-control-group > label{font-size:11.5px;font-weight:700;color:var(--ink2);
+  letter-spacing:1px;text-transform:uppercase;display:flex;align-items:baseline;gap:8px}
+.bf-control-val{font-family:var(--mono);font-size:20px;font-weight:700;color:var(--red);line-height:1;
+  transition:transform .2s;display:inline-block}
+.bf-range{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:999px;
+  background:var(--line);outline:none;cursor:pointer}
+.bf-range::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;
+  background:var(--red);cursor:pointer;border:3px solid var(--bg);box-shadow:0 1px 4px rgba(0,0,0,.3);
+  transition:transform .15s}
+.bf-range::-webkit-slider-thumb:hover{transform:scale(1.12)}
+.bf-range::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:var(--red);
+  cursor:pointer;border:3px solid var(--bg)}
+
+.bf-space-result{text-align:center;padding:16px 14px;background:var(--bg);border-radius:12px;
+  border:1.5px solid var(--line);margin-bottom:14px;transition:border-color .3s}
+.bf-space-formula{font-family:var(--mono);font-size:clamp(26px,5vw,36px);font-weight:700;color:var(--red);
+  line-height:1;letter-spacing:.5px;display:inline-block;transition:transform .2s}
+.bf-space-count{font-family:var(--mono);font-size:15px;color:var(--ink);margin-top:8px;
+  display:inline-block;transition:transform .2s;word-break:break-all}
+.bf-space-words{font-size:12.5px;color:var(--ink2);margin-top:6px}
+.bf-space-formula.pulse, .bf-space-count.pulse, .bf-crack-time.pulse,
+.bf-control-val.pulse{animation:bf-pulse-anim .4s ease}
+@keyframes bf-pulse-anim{0%{transform:scale(1)}50%{transform:scale(1.08)}100%{transform:scale(1)}}
+
+.bf-crack-panel{background:var(--bg);border:1.5px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:16px}
+.bf-crack-label{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--ink2);
+  font-weight:700;margin-bottom:6px;line-height:1.4}
+.bf-crack-time{font-family:var(--mono);font-size:clamp(22px,4.5vw,30px);font-weight:700;color:var(--red);
+  line-height:1.1;margin-bottom:20px;transition:color .4s;display:inline-block}
+
+.bf-ruler{position:relative;height:36px;margin-top:8px;margin-bottom:30px}
+.bf-ruler-track{position:absolute;top:50%;left:0;right:0;height:8px;margin-top:-4px;
+  border-radius:999px;background:var(--line);overflow:hidden}
+.bf-ruler-fill{height:100%;width:0;background:var(--red);border-radius:999px;
+  transition:width .4s cubic-bezier(.3,1,.5,1), background .4s}
+.bf-ruler-dot{position:absolute;top:50%;left:0;width:18px;height:18px;margin-left:-9px;margin-top:-9px;
+  border-radius:50%;background:var(--red);border:3px solid var(--bg);z-index:2;
+  transition:left .4s cubic-bezier(.3,1,.5,1), background .4s;
+  box-shadow:0 0 0 2px var(--red)}
+.bf-ruler-dot::after{content:'';position:absolute;inset:-3px;border-radius:50%;
+  border:2px solid currentColor;opacity:0;animation:bf-dot-pulse 2s ease-in-out infinite}
+@keyframes bf-dot-pulse{0%,100%{opacity:0;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
+.bf-landmarks{position:absolute;top:100%;left:0;right:0;height:24px;margin-top:4px}
+.bf-landmark{position:absolute;transform:translateX(-50%);font-size:10px;color:var(--ink2);
+  white-space:nowrap;text-align:center;font-family:var(--mono);letter-spacing:.3px}
+.bf-landmark::before{content:'';position:absolute;top:-8px;left:50%;width:1px;height:6px;
+  background:var(--ink2);transform:translateX(-50%);opacity:.4}
+
+.bf-ladder-wrap{margin-top:20px}
+.bf-ladder-title{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--ink2);
+  font-weight:700;margin-bottom:10px}
+.bf-ladder{display:flex;flex-direction:column;gap:1px}
+.bf-ladder-row{display:grid;grid-template-columns:26px 1fr 120px;gap:10px;align-items:center;
+  padding:5px 8px;border-radius:6px;font-size:12px;color:var(--ink2);
+  transition:background .3s,color .3s,transform .2s}
+.bf-ladder-row.current{background:#fde3e3;color:var(--red);font-weight:700;transform:translateX(3px)}
+@media (prefers-color-scheme: dark){.bf-ladder-row.current{background:#4a1416}}
+.bf-ladder-len{font-family:var(--mono);font-weight:700;text-align:right}
+.bf-ladder-bar{height:8px;border-radius:999px;background:var(--line);overflow:hidden}
+.bf-ladder-fill{height:100%;width:0;background:var(--red);border-radius:999px;
+  transition:width .5s cubic-bezier(.3,1,.5,1), background .3s}
+.bf-ladder-time{font-family:var(--mono);text-align:right;font-size:11.5px;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+
+.bf-vs-card{margin-top:22px;background:var(--bg);border:1.5px solid var(--line);border-radius:12px;padding:14px 16px}
+.bf-vs-title{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:14px;
+  display:flex;align-items:center;gap:8px}
+.bf-vs-title::before{content:'⚖️';font-size:16px}
+.bf-vs-row{display:grid;grid-template-columns:1fr 90px 150px;gap:10px;align-items:center;
+  padding:7px 0;font-size:12px;border-bottom:1px dashed var(--line)}
+.bf-vs-row:last-of-type{border-bottom:0}
+@media (max-width:560px){.bf-vs-row{grid-template-columns:1fr;gap:4px}}
+.bf-vs-label{color:var(--ink2)}
+.bf-vs-bar{height:10px;border-radius:999px;background:var(--line);overflow:hidden}
+.bf-vs-fill{height:100%;background:var(--red);border-radius:999px;transition:width .6s cubic-bezier(.3,1,.5,1)}
+.bf-vs-val{font-family:var(--mono);font-size:11.5px;text-align:right;color:var(--ink)}
+.bf-vs-val .factor{display:inline-block;margin-left:4px;padding:1px 7px;border-radius:999px;
+  background:var(--red);color:#fff;font-size:10px;font-weight:700}
+.bf-vs-note{margin-top:12px;font-size:12px;color:var(--ink2);padding:10px 12px;background:var(--bg2);
+  border-radius:8px;border-left:3px solid var(--red);line-height:1.5}
+
+/* old bf-type cards */
+.bf-opgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+.bf-op{border:1.5px solid var(--line);border-radius:12px;padding:12px;background:var(--bg);
+  opacity:0;transform:translateY(8px) scale(.97);transition:opacity .4s,transform .4s}
+.bf-op.show{opacity:1;transform:none}
+.bf-op .name{font-weight:700;font-size:13px;margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.bf-op .row2{font-size:11.5px;color:var(--ink2);margin-top:5px}
+.bf-op .row2 code{font-family:var(--mono);font-size:11px;color:var(--red-light);word-break:break-word}
+.bf-op .ex{margin-top:8px;font-family:var(--mono);font-size:11.5px;background:var(--bg2);
+  border:1px solid var(--line);border-radius:7px;padding:6px 8px;color:var(--red-light);word-break:break-word}
+
+@keyframes bf-to-right{from{left:8%;transform:translate(0,-50%) scale(1)}to{left:88%;transform:translate(0,-50%) scale(1)}}
+@keyframes bf-to-left{from{left:88%;transform:translate(0,-50%) scale(1)}to{left:8%;transform:translate(0,-50%) scale(1)}}
+.bf-ball-to-right{animation:bf-to-right 1s ease forwards}
+.bf-ball-to-left{animation:bf-to-left 1s ease forwards}
+
+.bf-preview{font-family:var(--mono);font-size:13px;line-height:1.9}
+.bf-preview .line{display:block}
+.bf-preview .cmt{color:var(--ink2)}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <span class="badge">Securinets Esprit</span>
+  <h1>Brute <span>Force</span></h1>
+  <p>A hands-on walkthrough. No clever payload, no syntax tricks — just a computer trying one guess after
+  another, very fast, until something works. Everything below is simulated; nothing here touches a real
+  login.</p>
+</div>
+
+<main>
+
+<!-- ============================================================ STEP 1 -->
+<section id="s1">
+  <div class="step">Step 1 — the code behind the login form</div>
+  <h2>What happens when you hit "sign in"</h2>
+  <p class="lead">Every login form is a yes/no oracle. You send a username and a password; the server
+  compares the password to a stored hash and answers <b>200 OK</b> or <b>401 Unauthorized</b>. There is no
+  concept of "how many times" — only "correct" or "incorrect". A script can ask the same question
+  millions of times.</p>
+
+  <div class="card">
+    <pre class="bf-preview"><span class="cmt">// simplified login handler</span>
+<span class="kw">POST</span> /login
+{ <span class="kw">"user"</span>: <span class="bf-slot">alice</span>, <span class="kw">"pass"</span>: <span class="bf-slot">hunter2</span> }
+
+<span class="kw">if</span> (bcrypt.compare(pass, stored_hash[user])) → <span class="kw">200 OK</span>
+<span class="kw">else</span>                                             → <span class="kw">401 Unauthorized</span></pre>
+  </div>
+
+  <p class="lead">A human types one password, waits, maybe tries again. A script sends the whole dictionary
+  of possibilities in the time it takes you to blink. The form doesn't care — it just keeps answering.</p>
+
+  <div class="xv-wrap">
+    <div class="xv-title">Human vs. machine — same form, two different speeds</div>
+    <div class="xv-boundary">
+      <div class="xv-zone xv-data" id="bfZoneHuman"><span class="xv-ico">🧑</span>Human<br>1 guess per few seconds</div>
+      <div class="xv-zone xv-code" id="bfZoneMachine"><span class="xv-ico">🤖</span>Script<br>millions per second</div>
+      <div class="xv-ball" id="bfBall" style="transform:translate(0,-50%) scale(1)"></div>
+    </div>
+    <div class="xv-caption" id="bfCaption">Tap "automate this" and watch what a script does to a login form.</div>
+    <div class="row" style="justify-content:center;margin-top:10px">
+      <button onclick="bfAutomate()">Automate this</button>
+      <button class="ghost" onclick="bfResetHuman()">Back to human</button>
+    </div>
+  </div>
+
+  <div class="xv-wrap">
+    <div class="xv-title">Why brute force exists at all</div>
+    <div class="bf-opgrid" id="bfWhyGrid">
+      <div class="bf-op" id="bw1"><div class="name">🔒 Servers can't tell</div>
+        <div class="row2">A login endpoint has no concept of intent. It just compares strings.</div></div>
+      <div class="bf-op" id="bw2"><div class="name">⚡ Automation is cheap</div>
+        <div class="row2">One script, thousands of requests per second, no human in the loop.</div></div>
+      <div class="bf-op" id="bw3"><div class="name">📚 People reuse passwords</div>
+        <div class="row2">A leak from one site makes every other site easier to guess.</div></div>
+      <div class="bf-op" id="bw4"><div class="name">🎯 Search space is finite</div>
+        <div class="row2">Every password is somewhere in a mathematically enumerable space.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ STEP 2 -->
+<section id="s2">
+  <div class="step">Step 2 — your first real brute force</div>
+  <h2>Watch a script walk through a password list</h2>
+  <p class="lead">Below is a simulated login form. Pick a target password and a speed, then press start.
+  The script tries one candidate after another until the server says <b>200 OK</b>. This is the whole
+  attack — there is nothing else to it.</p>
+
+  <div class="bf-controls">
+    <label>target password:</label>
+    <select id="bfTarget">
+      <option value="123456">123456 (instant)</option>
+      <option value="letmein" selected>letmein (mid)</option>
+      <option value="sunshine">sunshine (late)</option>
+    </select>
+    <label>speed:</label>
+    <select id="bfSpeed">
+      <option value="220">slow</option>
+      <option value="80" selected>normal</option>
+      <option value="18">fast</option>
+    </select>
+    <button onclick="startBF()">Start attack</button>
+    <button class="ghost" onclick="stopBF()">Stop</button>
+    <button class="ghost" onclick="resetBF()">Reset</button>
+  </div>
+
+  <div class="bf-counter-wrap">
+    <div class="bf-counter" id="bfCount">0</div>
+    <div class="bf-counter-label">attempts sent</div>
+  </div>
+
+  <div class="bf-progress"><div class="bf-progress-fill" id="bfProgress"></div></div>
+
+  <div class="xv-flash" id="bfTermFlash">
+    <div class="bf-term">
+      <div class="bar"><span class="dot" style="background:#ff6159"></span><span class="dot" style="background:#ffbd2e"></span><span class="dot" style="background:#27c93f"></span>
+        &nbsp;login.example — simulated server<span class="bf-sim-badge">simulated</span></div>
+      <div class="screen" id="bfConsole">waiting for the attack to start<span class="bf-caret"></span></div>
+    </div>
+  </div>
+
+  <div id="bfStatus" class="status"></div>
+
+  <div class="xv-wrap">
+    <div class="xv-title">What happens, step by step</div>
+    <div class="xv-tl" id="bfTimeline">
+      <div class="xv-tlrow" id="bfT1"><div class="xv-tlnum">1</div><div class="xv-tltext">The script picks a username — here <code>alice</code> — and starts at the top of a candidate list.</div></div>
+      <div class="xv-tlline"></div>
+      <div class="xv-tlrow" id="bfT2"><div class="xv-tlnum">2</div><div class="xv-tltext">Each candidate is sent as a normal login request. The server answers 401 for a wrong guess, 200 for a right one.</div></div>
+      <div class="xv-tlline"></div>
+      <div class="xv-tlrow" id="bfT3"><div class="xv-tlnum">3</div><div class="xv-tltext">The script moves to the next candidate on 401, and stops on 200. That's the entire attack loop.</div></div>
+      <div class="xv-tlline"></div>
+      <div class="xv-tlrow" id="bfT4"><div class="xv-tlnum">4</div><div class="xv-tltext">A real attacker would run this at thousands of requests per second — the animation here is slowed down ~100× so you can watch it.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ STEP 3 — REBUILT -->
+<section id="s3">
+  <div class="step">Step 3 — the math of "search space"</div>
+  <h2>Why length beats complexity</h2>
+  <p class="lead">Every password lives in a <b>search space</b> — every string an attacker might have to
+  try. That space grows <b>exponentially</b> with length: each extra character multiplies it by the size of
+  the alphabet. Change anything below and every number on this panel recalculates live.</p>
+
+  <div class="xv-wrap">
+    <div class="xv-title">Search space explorer — everything below reacts to your input</div>
+
+    <div class="bf-space-controls">
+      <div class="bf-control-group">
+        <label>Password length <span class="bf-control-val" id="spLenVal">8</span></label>
+        <input type="range" class="bf-range" id="spLen" min="4" max="20" value="8" step="1">
+      </div>
+      <div class="bf-control-group">
+        <label>Character set</label>
+        <select id="spAlpha" style="padding:10px 12px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);font-family:var(--mono);font-size:13px;">
+          <option value="10">digits only (10)</option>
+          <option value="26">lowercase (26)</option>
+          <option value="52">upper + lower (52)</option>
+          <option value="62" selected>alphanumeric (62)</option>
+          <option value="95">full ASCII (95)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="bf-space-result">
+      <div class="bf-space-formula" id="spFormula">62^8</div>
+      <div class="bf-space-count" id="spCount">218,340,105,584,896 combinations</div>
+      <div class="bf-space-words" id="spWords">≈ 218 trillion possibilities</div>
+    </div>
+
+    <div class="bf-crack-panel">
+      <div class="bf-crack-label">Time to crack at 10 billion guesses/sec — a mid-range GPU</div>
+      <div class="bf-crack-time" id="spCrackTime">6.1 hr</div>
+      <div class="bf-ruler">
+        <div class="bf-ruler-track">
+          <div class="bf-ruler-fill" id="rulerFill" style="width:0%"></div>
+        </div>
+        <div class="bf-ruler-dot" id="rulerDot" style="left:0%"></div>
+        <div class="bf-landmarks" id="rulerLandmarks"></div>
+      </div>
+    </div>
+
+    <div class="bf-ladder-wrap">
+      <div class="bf-ladder-title">Same attack, every length — the exponential, laid bare</div>
+      <div class="bf-ladder" id="spLadder"></div>
+    </div>
+
+    <div class="bf-vs-card">
+      <div class="bf-vs-title">Length vs. complexity — the actual numbers</div>
+      <div class="bf-vs-row">
+        <div class="bf-vs-label">8 chars · alphanumeric (62)</div>
+        <div class="bf-vs-bar"><div class="bf-vs-fill" style="width:15%"></div></div>
+        <div class="bf-vs-val">218 trillion</div>
+      </div>
+      <div class="bf-vs-row">
+        <div class="bf-vs-label">8 chars · full ASCII (95)</div>
+        <div class="bf-vs-bar"><div class="bf-vs-fill" style="width:42%"></div></div>
+        <div class="bf-vs-val">6.63 Q <span class="factor">×30</span></div>
+      </div>
+      <div class="bf-vs-row">
+        <div class="bf-vs-label">10 chars · alphanumeric (62)</div>
+        <div class="bf-vs-bar"><div class="bf-vs-fill" style="width:88%"></div></div>
+        <div class="bf-vs-val">839 Q <span class="factor">×3,843</span></div>
+      </div>
+      <div class="bf-vs-note">Just 2 extra characters (×3,843) beats adding the whole symbol set (×30) by
+      over a hundred times. Length is where the exponential lives — complexity only gives you a one-time
+      bump.</div>
+    </div>
+  </div>
+
+  <p class="lead" style="margin-top:1rem">That's why security people say "length beats complexity." Going
+  from 8 to 12 characters multiplies the search space by <b>62⁴ ≈ 14.7 million</b>. Adding uppercase,
+  symbols, digits — all of it together — doesn't come close.</p>
+</section>
+
+<!-- ============================================================ STEP 4 -->
+<section id="s4">
+  <div class="step">Step 4 — four ways to guess</div>
+  <h2>Same idea, different dictionaries</h2>
+  <p class="lead">"Brute force" is the general name, but the candidate list matters enormously. A dictionary
+  attack is not the same as enumerating every string — and credential stuffing is not guessing at all.</p>
+
+  <div class="xv-wrap">
+    <div class="xv-title">The four approaches, from dumbest to smartest</div>
+    <div class="bf-opgrid" id="bfTypeGrid">
+      <div class="bf-op" id="bt1"><div class="name">🔤 Dictionary</div>
+        <div class="row2">Try passwords from a leaked list, in order of popularity.</div>
+        <div class="ex">123456 · password · qwerty · letmein · iloveyou</div></div>
+      <div class="bf-op" id="bt2"><div class="name">💥 Pure brute force</div>
+        <div class="row2">Enumerate every string of the alphabet up to a length. Guaranteed, but slow.</div>
+        <div class="ex">a, b, c, …, aa, ab, ac, …, zz, aaa, …</div></div>
+      <div class="bf-op" id="bt3"><div class="name">🧩 Mask / hybrid</div>
+        <div class="row2">Known pattern + brute force the variable part.</div>
+        <div class="ex">Summer2024 → Summer + 4 digits</div></div>
+      <div class="bf-op" id="bt4"><div class="name">🍪 Credential stuffing</div>
+        <div class="row2">Not guessing at all — replay email/password pairs leaked from other sites.</div>
+        <div class="ex">user@a.com : Password1  →  user@b.com</div></div>
+    </div>
+  </div>
+
+  <p class="lead" style="margin-top:1rem">Most real-world "brute force" you read about is a <b>dictionary
+  attack</b> with a leaked list — it's faster than enumerating the space and catches people who reuse
+  passwords. Pure brute force is the fallback when nothing else works.</p>
+</section>
+
+<!-- ============================================================ STEP 5 -->
+<section id="s5">
+  <div class="step">Step 5 — the defense that actually works</div>
+  <h2>Rate limiting: make guessing slow</h2>
+  <p class="lead">The server can't stop you from guessing — but it can refuse to answer fast. A rate limit
+  (e.g. <b>5 attempts per minute per account</b>) turns a 100-million-guess attack from seconds into
+  decades. Watch the two panels below try the exact same attack.</p>
+
+  <div class="row" style="margin-top:10px">
+    <button onclick="runRateDemo()">Run both attacks</button>
+    <button class="ghost" onclick="resetRateDemo()">Reset</button>
+  </div>
+
+  <div class="bf-dual">
+    <div>
+      <div class="bf-dual-head vuln">❌ no rate limit</div>
+      <div class="bf-term">
+        <div class="bar"><span class="dot" style="background:#ff6159"></span><span class="dot" style="background:#ffbd2e"></span><span class="dot" style="background:#27c93f"></span>
+          &nbsp;vuln.example</div>
+        <div class="screen" id="rlLeft">idle<span class="bf-caret"></span></div>
+      </div>
+    </div>
+    <div>
+      <div class="bf-dual-head safe">✅ 5 attempts / minute</div>
+      <div class="bf-term">
+        <div class="bar"><span class="dot" style="background:#ff6159"></span><span class="dot" style="background:#ffbd2e"></span><span class="dot" style="background:#27c93f"></span>
+          &nbsp;safe.example</div>
+        <div class="screen" id="rlRight">idle<span class="bf-caret"></span></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="rlStatus" class="status"></div>
+
+  <p class="lead" style="margin-top:1rem;font-size:13.5px"><b>Other defenses that work alongside it:</b>
+  account lockout after N failures, progressive delays (1s, 2s, 4s, 8s…), CAPTCHAs, and requiring MFA —
+  which makes a correct password useless on its own.</p>
+</section>
+
+<!-- ============================================================ STEP 6 -->
+<section id="s6">
+  <div class="step">Step 6 — password strength, made visible</div>
+  <h2>How long would <i>your</i> password survive?</h2>
+  <p class="lead">Type anything into the box below. The meter shows estimated entropy (bits) and how long
+  it would take to brute-force at three different attack speeds. This is the same math an attacker uses
+  to prioritise a list.</p>
+
+  <div class="bf-pwbox">
+    <input type="text" id="pwInput" placeholder="Type a password…" autocomplete="off">
+    <div class="bf-meter"><div class="bf-meter-fill" id="pwMeter"></div></div>
+    <div class="bf-meter-labels"><span>weak</span><span>reasonable</span><span>strong</span><span>very strong</span></div>
+    <div class="bf-pw-stats">
+      <div class="bf-pw-stat"><div class="k">entropy</div><div class="v" id="pwEntropy">0 bits</div></div>
+      <div class="bf-pw-stat"><div class="k">online form (10/s)</div><div class="v" id="pwOnline">instant</div></div>
+      <div class="bf-pw-stat"><div class="k">bcrypt offline (10k/s)</div><div class="v" id="pwBcrypt">instant</div></div>
+      <div class="bf-pw-stat"><div class="k">SHA-256 GPU (10B/s)</div><div class="v" id="pwGpu">instant</div></div>
+    </div>
+    <div id="pwStatus" class="status"></div>
+  </div>
+
+  <div class="xv-wrap">
+    <div class="xv-title">Why the meter jumps at certain characters</div>
+    <div class="bf-preview">
+      <span class="line"><span class="cmt">// entropy per character = log2(alphabet size)</span></span>
+      <span class="line">lowercase only:  log2(26)  ≈ 4.70 bits/char</span>
+      <span class="line">+ uppercase:      log2(52)  ≈ 5.70 bits/char</span>
+      <span class="line">+ digits:         log2(62)  ≈ 5.95 bits/char</span>
+      <span class="line">+ symbols:        log2(95)  ≈ 6.57 bits/char</span>
+    </div>
+    <p class="lead" style="margin-top:10px;font-size:13px">Adding a new character class is a small boost
+    per character. Adding <b>characters</b> is a huge boost — because entropy is multiplied by length.</p>
+  </div>
+</section>
+
+<!-- ============================================================ STEP 7 -->
+<section id="s7">
+  <div class="step">Step 7 — why brute force is a big deal</div>
+  <h2>It's never just "one account"</h2>
+  <p class="lead">One cracked password is a foothold. The same attack runs against every account on the
+  site — and because people reuse passwords, a crack on one service becomes a key to many others.</p>
+
+  <div class="xv-wrap" style="margin-bottom:1rem">
+    <div class="xv-title">One login form → one account → every account</div>
+    <div class="xv-hijack">
+      <div class="xv-hpanel"><span class="xv-ico">🔑</span>One login<br>form</div>
+      <div class="xv-harrow"><span>➜</span></div>
+      <div class="xv-hpanel"><span class="xv-ico">👤</span>One cracked<br>account</div>
+      <div class="xv-harrow"><span>➜</span></div>
+      <div class="xv-hpanel xv-win"><span class="xv-ico">🕶️</span>Password reuse<br>across sites</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="xv-title" style="margin-bottom:8px">A realistic chain</div>
+    <div class="steps" id="bfChain">
+      <div id="bc1"><b>1.</b> A leaked password list from another site contains <code>alice@example.com : Summer2023!</code>.</div>
+      <div id="bc2"><b>2.</b> The attacker replays it against dozens of popular sites — no guessing, no rate limit trips if they go slowly.</div>
+      <div id="bc3"><b>3.</b> One of those sites accepts it. That account is now compromised with <b>zero</b> brute force involved.</div>
+      <div id="bc4"><b>4.</b> Inside that account, the attacker finds more email addresses, more services, and repeats.</div>
+    </div>
+  </div>
+
+  <p class="lead">Ask yourself every time: <b>how fast can someone try passwords against this endpoint, and
+  what happens if they succeed?</b></p>
+</section>
+
+</main>
+<footer>Securinets Esprit — Web Exploitation Workshop</footer>
+
+<script>
+/* ================= shared helpers ================= */
+function humanTime(seconds){
+  if(!isFinite(seconds)) return 'forever';
+  if(seconds < 1e-3) return 'instant';
+  if(seconds < 1) return (seconds*1000).toFixed(1) + ' ms';
+  if(seconds < 60) return seconds.toFixed(1) + ' sec';
+  if(seconds < 3600) return (seconds/60).toFixed(1) + ' min';
+  if(seconds < 86400) return (seconds/3600).toFixed(1) + ' hr';
+  if(seconds < 2592000) return (seconds/86400).toFixed(1) + ' days';
+  if(seconds < 31536000) return (seconds/2592000).toFixed(1) + ' months';
+  if(seconds < 3.154e9) return (seconds/31536000).toFixed(1) + ' years';
+  if(seconds < 3.154e12) return (seconds/3.154e9).toFixed(1) + 'K years';
+  if(seconds < 3.154e15) return (seconds/3.154e12).toFixed(1) + 'M years';
+  if(seconds < 3.154e18) return (seconds/3.154e15).toFixed(1) + 'B years';
+  return (seconds/3.154e18).toFixed(1) + ' quint years';
+}
+function formatExact(n){
+  if(n < 1e15) return Math.floor(n).toLocaleString('en-US');
+  const exp = Math.floor(Math.log10(n));
+  const mant = n / Math.pow(10, exp);
+  return mant.toFixed(2) + ' × 10^' + exp;
+}
+function formatWords(n){
+  if(n < 1e3) return Math.floor(n).toString();
+  if(n < 1e6) return (n/1e3).toFixed(1) + ' thousand';
+  if(n < 1e9) return (n/1e6).toFixed(1) + ' million';
+  if(n < 1e12) return (n/1e9).toFixed(1) + ' billion';
+  if(n < 1e15) return (n/1e12).toFixed(1) + ' trillion';
+  if(n < 1e18) return (n/1e15).toFixed(1) + ' quadrillion';
+  if(n < 1e21) return (n/1e18).toFixed(1) + ' quintillion';
+  if(n < 1e24) return (n/1e21).toFixed(1) + ' sextillion';
+  if(n < 1e27) return (n/1e24).toFixed(1) + ' septillion';
+  if(n < 1e30) return (n/1e27).toFixed(1) + ' octillion';
+  if(n < 1e33) return (n/1e30).toFixed(1) + ' nonillion';
+  return (n/1e33).toFixed(1) + ' decillion+';
+}
+function pulse(el){
+  if(!el) return;
+  el.classList.remove('pulse');
+  void el.offsetWidth;
+  el.classList.add('pulse');
+}
+
+/* ================= step 1: automate ================= */
+const bfBall = document.getElementById('bfBall');
+const bfZoneH = document.getElementById('bfZoneHuman');
+const bfZoneM = document.getElementById('bfZoneMachine');
+const bfCap   = document.getElementById('bfCaption');
+let bfMode = 'human';
+
+function bfAutomate(){
+  if(bfMode === 'automated') return;
+  bfBall.classList.remove('bf-ball-to-left');
+  bfBall.classList.add('bf-ball-to-right');
+  bfZoneM.classList.add('xv-hot');
+  bfZoneH.classList.remove('xv-calm');
+  bfCap.textContent = 'A script now asks the same question thousands of times per second. The form answers every one.';
+  bfMode = 'automated';
+}
+function bfResetHuman(){
+  if(bfMode === 'human') return;
+  bfBall.classList.remove('bf-ball-to-right');
+  bfBall.classList.add('bf-ball-to-left');
+  bfZoneM.classList.remove('xv-hot');
+  bfCap.textContent = 'Back to one guess at a time. The form is still the same — only the speed changed.';
+  bfMode = 'human';
+}
+
+/* ================= step 2: brute force demo ================= */
+const WORDLIST = [
+  '123456','password','12345678','qwerty','123456789','12345','1234','111111','1234567',
+  'dragon','123123','baseball','abc123','football','monkey','letmein','696969','shadow',
+  'master','666666','qwertyuiop','123321','mustang','1234567890','michael','654321','superman',
+  '1qaz2wsx','7777777','121212','000000','qazwsx','123qwe','killer','trustno1','jordan',
+  'jennifer','zxcvbnm','asdfgh','hunter','buster','soccer','harley','batman','andrew','tigger',
+  'sunshine','iloveyou','2000','charlie'
+];
+
+let bfTimer = null;
+let bfAttempts = 0;
+let bfIndex = 0;
+let bfFound = false;
+let bfTarget = 'letmein';
+let bfHistory = [];
+
+function bfTargetPos(){
+  const i = WORDLIST.indexOf(bfTarget);
+  return i < 0 ? WORDLIST.length : i + 1;
+}
+
+function startBF(){
+  stopBF();
+  bfAttempts = 0;
+  bfIndex = 0;
+  bfFound = false;
+  bfHistory = [];
+  bfTarget = document.getElementById('bfTarget').value;
+  const speed = parseInt(document.getElementById('bfSpeed').value, 10) || 80;
+
+  document.getElementById('bfCount').textContent = '0';
+  document.getElementById('bfProgress').style.width = '0%';
+  document.getElementById('bfProgress').classList.remove('done');
+  const st = document.getElementById('bfStatus');
+  st.className = 'status'; st.textContent = '';
+  const screen = document.getElementById('bfConsole');
+  screen.innerHTML = '';
+
+  const flash = document.getElementById('bfTermFlash');
+  flash.classList.remove('xv-pulse'); void flash.offsetWidth; flash.classList.add('xv-pulse');
+
+  playBFTimeline(0);
+  bfTimer = setInterval(bfTick, speed);
+}
+
+function bfTick(){
+  if(bfFound || bfIndex >= WORDLIST.length){ stopBF(); return; }
+  const cand = WORDLIST[bfIndex];
+  bfIndex++;
+  bfAttempts++;
+  const match = (cand === bfTarget);
+  bfHistory.push({cand, match});
+  if(bfHistory.length > 7) bfHistory.shift();
+  updateBFUI(cand, match);
+  if(match){ bfFound = true; finishBF(); }
+}
+
+function updateBFUI(cand, match){
+  const cnt = document.getElementById('bfCount');
+  cnt.textContent = bfAttempts.toLocaleString('en-US');
+  cnt.classList.add('bump');
+  setTimeout(()=>cnt.classList.remove('bump'), 140);
+
+  const pos = bfTargetPos();
+  const pct = Math.min(100, Math.round((bfAttempts / pos) * 100));
+  document.getElementById('bfProgress').style.width = pct + '%';
+
+  const screen = document.getElementById('bfConsole');
+  screen.innerHTML = '';
+  bfHistory.forEach((h, i)=>{
+    const tag = h.match ? '<span class="ok">200 OK ✓</span>' : '<span class="dim">401</span>';
+    const isLast = i === bfHistory.length - 1;
+    const prefix = isLast ? '<span class="warn">▶</span>' : '<span class="dim">·</span>';
+    screen.innerHTML += `<div>${prefix} try "${h.cand}" → ${tag}</div>`;
+  });
+  if(!match) screen.innerHTML += '<div class="dim">…</div>';
+  screen.scrollTop = screen.scrollHeight;
+}
+
+function finishBF(){
+  stopBF();
+  document.getElementById('bfProgress').classList.add('done');
+  document.getElementById('bfProgress').style.width = '100%';
+  const screen = document.getElementById('bfConsole');
+  screen.innerHTML +=
+    `<div class="ok" style="margin-top:6px">━━━━━━━━━━━━━━━━━━━━━━━━━━━━</div>` +
+    `<div class="ok">✓ password found: "${bfTarget}"</div>` +
+    `<div class="ok">  after ${bfAttempts} attempts</div>` +
+    `<div class="warn">  at 1,000 req/sec this would take ${(bfAttempts/1000).toFixed(3)}s in reality</div>`;
+  screen.scrollTop = screen.scrollHeight;
+
+  const st = document.getElementById('bfStatus');
+  st.className = 'status danger';
+  st.textContent = `Password "${bfTarget}" found after ${bfAttempts} attempts. The animation is slowed down ~100× so you can watch it.`;
+  playBFTimeline(4);
+}
+
+function stopBF(){ if(bfTimer){ clearInterval(bfTimer); bfTimer = null; } }
+function resetBF(){
+  stopBF();
+  bfAttempts = 0; bfIndex = 0; bfFound = false; bfHistory = [];
+  document.getElementById('bfCount').textContent = '0';
+  document.getElementById('bfProgress').style.width = '0%';
+  document.getElementById('bfProgress').classList.remove('done');
+  document.getElementById('bfConsole').innerHTML = 'waiting for the attack to start<span class="bf-caret"></span>';
+  const st = document.getElementById('bfStatus');
+  st.className = 'status'; st.textContent = '';
+  playBFTimeline(-1);
+}
+
+function playBFTimeline(upTo){
+  const ids = ['bfT1','bfT2','bfT3','bfT4'];
+  ids.forEach(id=>document.getElementById(id).classList.remove('on'));
+  if(upTo < 0) return;
+  ids.slice(0, upTo).forEach((id, i)=>{
+    setTimeout(()=>document.getElementById(id).classList.add('on'), 150 + i*260);
+  });
+}
+
+/* ================= step 3: REBUILT search space ================= */
+const GUESSES_PER_SEC = 1e10;
+const RULER_MIN = 1e-3;   /* 1 ms */
+const RULER_MAX = 1e24;   /* far past the age of the universe */
+
+function rulerPos(seconds){
+  const logMin = Math.log10(RULER_MIN);
+  const logMax = Math.log10(RULER_MAX);
+  const logS = Math.log10(Math.max(RULER_MIN, Math.min(RULER_MAX, seconds)));
+  return ((logS - logMin) / (logMax - logMin)) * 100;
+}
+function rulerColor(pos){
+  if(pos < 25) return 'var(--red)';
+  if(pos < 50) return '#e8a33a';
+  if(pos < 75) return '#8a9e2a';
+  return 'var(--safe)';
+}
+
+function buildLadder(){
+  const ladder = document.getElementById('spLadder');
+  ladder.innerHTML = '';
+  for(let len = 4; len <= 16; len++){
+    const row = document.createElement('div');
+    row.className = 'bf-ladder-row';
+    row.dataset.len = len;
+    row.innerHTML = `
+      <span class="bf-ladder-len">${len}</span>
+      <div class="bf-ladder-bar"><div class="bf-ladder-fill" style="width:0%"></div></div>
+      <span class="bf-ladder-time">—</span>
+    `;
+    ladder.appendChild(row);
+  }
+}
+
+function buildLandmarks(){
+  const container = document.getElementById('rulerLandmarks');
+  if(!container) return;
+  container.innerHTML = '';
+  const landmarks = [
+    {s: 1,        label: '1 sec'},
+    {s: 3600,     label: '1 hr'},
+    {s: 3.15e7,   label: '1 yr'},
+    {s: 3.15e10,  label: '1K yrs'},
+    {s: 3.15e13,  label: '1M yrs'},
+    {s: 4.35e17,  label: 'universe'}
+  ];
+  landmarks.forEach(lm => {
+    const el = document.createElement('div');
+    el.className = 'bf-landmark';
+    el.style.left = rulerPos(lm.s) + '%';
+    el.textContent = lm.label;
+    container.appendChild(el);
+  });
+}
+
+function updateLadder(alpha){
+  document.querySelectorAll('#spLadder .bf-ladder-row').forEach(row => {
+    const len = parseInt(row.dataset.len, 10);
+    const combos = Math.pow(alpha, len);
+    const seconds = combos / 2 / GUESSES_PER_SEC;
+    const pos = rulerPos(seconds);
+    const color = rulerColor(pos);
+    const fill = row.querySelector('.bf-ladder-fill');
+    fill.style.width = Math.max(2, Math.min(100, pos)) + '%';
+    fill.style.background = color;
+    row.querySelector('.bf-ladder-time').textContent = humanTime(seconds);
+  });
+}
+
+function updateSearchSpace(){
+  const len = parseInt(document.getElementById('spLen').value, 10);
+  const alpha = parseInt(document.getElementById('spAlpha').value, 10);
+
+  document.getElementById('spLenVal').textContent = len;
+  pulse(document.getElementById('spLenVal'));
+
+  const combos = Math.pow(alpha, len);
+  const seconds = combos / 2 / GUESSES_PER_SEC;
+  const pos = rulerPos(seconds);
+  const color = rulerColor(pos);
+
+  const formula = document.getElementById('spFormula');
+  formula.textContent = alpha + '^' + len;
+  pulse(formula);
+
+  const count = document.getElementById('spCount');
+  count.textContent = formatExact(combos) + ' combinations';
+  pulse(count);
+
+  document.getElementById('spWords').textContent = '≈ ' + formatWords(combos) + ' possibilities';
+
+  const timeEl = document.getElementById('spCrackTime');
+  timeEl.textContent = humanTime(seconds);
+  timeEl.style.color = color;
+  pulse(timeEl);
+
+  const fill = document.getElementById('rulerFill');
+  fill.style.width = pos + '%';
+  fill.style.background = color;
+
+  const dot = document.getElementById('rulerDot');
+  dot.style.left = pos + '%';
+  dot.style.background = color;
+  dot.style.color = color;
+  dot.style.boxShadow = '0 0 0 2px ' + color;
+
+  document.querySelectorAll('#spLadder .bf-ladder-row').forEach(row => {
+    row.classList.toggle('current', parseInt(row.dataset.len, 10) === len);
+  });
+
+  updateLadder(alpha);
+}
+
+/* ================= step 5: rate limit demo ================= */
+let rlTimers = [];
+function runRateDemo(){
+  resetRateDemo();
+  const left = document.getElementById('rlLeft');
+  const right = document.getElementById('rlRight');
+  left.innerHTML = ''; right.innerHTML = '';
+
+  const LIMIT = 5;
+  const TOTAL = 20;
+
+  let lc = 0;
+  const lt = setInterval(()=>{
+    if(lc >= TOTAL){
+      clearInterval(lt);
+      left.innerHTML += '<div class="ok" style="margin-top:6px">✓ 20 attempts in a few seconds. Password guessable.</div>';
+      return;
+    }
+    lc++;
+    left.innerHTML += `<div>→ attempt ${lc}  <span class="dim">401</span></div>`;
+    left.scrollTop = left.scrollHeight;
+  }, 120);
+  rlTimers.push(lt);
+
+  let rc = 0;
+  const rt = setInterval(()=>{
+    if(rc >= TOTAL){ clearInterval(rt); return; }
+    rc++;
+    if(rc <= LIMIT){
+      right.innerHTML += `<div>→ attempt ${rc}  <span class="dim">401</span></div>`;
+    } else if(rc === LIMIT + 1){
+      right.innerHTML += `<div class="err">→ attempt ${rc}  <b>429 Too Many Requests</b></div>`;
+      right.innerHTML += `<div class="warn">-- blocked for 60s --</div>`;
+      right.innerHTML += `<div class="dim">remaining attempts this window: 0</div>`;
+      clearInterval(rt);
+      const st = document.getElementById('rlStatus');
+      st.className = 'status danger';
+      st.textContent = 'Left: 20 guesses with no resistance. Right: 5 guesses and a hard block — the attack just got ~4,000× slower.';
+    }
+    right.scrollTop = right.scrollHeight;
+  }, 200);
+  rlTimers.push(rt);
+}
+function resetRateDemo(){
+  rlTimers.forEach(t=>clearInterval(t));
+  rlTimers = [];
+  document.getElementById('rlLeft').innerHTML = 'idle<span class="bf-caret"></span>';
+  document.getElementById('rlRight').innerHTML = 'idle<span class="bf-caret"></span>';
+  const st = document.getElementById('rlStatus');
+  st.className = 'status'; st.textContent = '';
+}
+
+/* ================= step 6: password strength ================= */
+const COMMON_PW = ['123456','password','12345678','qwerty','letmein','admin','welcome','monkey','dragon','iloveyou'];
+const pwInput = document.getElementById('pwInput');
+
+function updatePW(){
+  const v = pwInput.value;
+  let pool = 0;
+  if(/[a-z]/.test(v)) pool += 26;
+  if(/[A-Z]/.test(v)) pool += 26;
+  if(/[0-9]/.test(v)) pool += 10;
+  if(/[^a-zA-Z0-9]/.test(v)) pool += 33;
+
+  const bits = pool > 0 && v.length > 0 ? v.length * Math.log2(pool) : 0;
+  const combos = Math.pow(2, bits);
+  const tOnline = combos / 2 / 10;
+  const tBcrypt = combos / 2 / 1e4;
+  const tGpu    = combos / 2 / 1e10;
+
+  document.getElementById('pwEntropy').textContent = bits.toFixed(1) + ' bits';
+  document.getElementById('pwEntropy').className = 'v ' + (bits < 40 ? 'bad' : bits < 80 ? '' : 'ok');
+
+  document.getElementById('pwOnline').textContent = humanTime(tOnline);
+  document.getElementById('pwBcrypt').textContent = humanTime(tBcrypt);
+  document.getElementById('pwGpu').textContent = humanTime(tGpu);
+  document.getElementById('pwOnline').className = 'v ' + (tOnline < 3600 ? 'bad' : tOnline < 31536000 ? '' : 'ok');
+  document.getElementById('pwBcrypt').className = 'v ' + (tBcrypt < 3600 ? 'bad' : tBcrypt < 31536000 ? '' : 'ok');
+  document.getElementById('pwGpu').className = 'v ' + (tGpu < 3600 ? 'bad' : tGpu < 31536000 ? '' : 'ok');
+
+  const pct = Math.min(100, Math.round(bits / 128 * 100));
+  const meter = document.getElementById('pwMeter');
+  meter.style.width = pct + '%';
+  if(bits < 28)       meter.style.background = 'var(--red)';
+  else if(bits < 50)  meter.style.background = '#e8a33a';
+  else if(bits < 80)  meter.style.background = '#8a9e2a';
+  else                meter.style.background = 'var(--safe)';
+
+  const st = document.getElementById('pwStatus');
+  if(!v){
+    st.className = 'status'; st.textContent = '';
+  } else if(COMMON_PW.includes(v.toLowerCase())){
+    st.className = 'status danger';
+    st.textContent = 'This is one of the most common passwords in the world. It will be tried in the first few seconds of any dictionary attack.';
+  } else if(bits < 40){
+    st.className = 'status danger';
+    st.textContent = 'Weak: a dictionary or targeted mask attack would find this quickly. Add length before you add symbols.';
+  } else if(bits < 70){
+    st.className = 'status safe';
+    st.textContent = 'Reasonable against online attacks, but a determined offline attacker with a good GPU could still get through.';
+  } else {
+    st.className = 'status safe';
+    st.textContent = 'Strong. At this entropy, even a GPU cluster would need years — the attack becomes impractical.';
+  }
+}
+pwInput.addEventListener('input', updatePW);
+
+/* ================= staggered reveals ================= */
+function staggerIn(els, step){
+  if(!els.length) return;
+  if('IntersectionObserver' in window){
+    const io = new IntersectionObserver((entries)=>{
+      entries.forEach(e=>{
+        if(e.isIntersecting){
+          els.forEach((el, i)=>setTimeout(()=>el.classList.add('show'), i*step));
+          io.disconnect();
+        }
+      });
+    }, {threshold:.25});
+    io.observe(els[0]);
+  } else {
+    els.forEach(el=>el.classList.add('show'));
+  }
+}
+staggerIn(['bw1','bw2','bw3','bw4'].map(id=>document.getElementById(id)), 120);
+staggerIn(['bt1','bt2','bt3','bt4'].map(id=>document.getElementById(id)), 120);
+
+(function(){
+  const steps = ['bc1','bc2','bc3','bc4'].map(id=>document.getElementById(id));
+  if('IntersectionObserver' in window){
+    const io = new IntersectionObserver((entries)=>{
+      entries.forEach(e=>{
+        if(e.isIntersecting){
+          steps.forEach((el, i)=>setTimeout(()=>el.classList.add('show'), i*180));
+          io.disconnect();
+        }
+      });
+    }, {threshold:.4});
+    io.observe(steps[0]);
+  } else {
+    steps.forEach(el=>el.classList.add('show'));
+  }
+})();
+
+/* ================= boot ================= */
+buildLadder();
+buildLandmarks();
+document.getElementById('spLen').addEventListener('input', updateSearchSpace);
+document.getElementById('spAlpha').addEventListener('change', updateSearchSpace);
+updateSearchSpace();
+updatePW();
+</script>
+</body>
+</html>

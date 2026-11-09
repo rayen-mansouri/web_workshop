@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>IDOR Lab — Securinets Esprit</title>
+<style>
+:root{
+  --red:#b31217; --red-dark:#7a0d10; --red-light:#e23a3e;
+  --bg:#ffffff; --bg2:#f7f3f3; --ink:#161414; --ink2:#5a5252;
+  --line:#e7dede; --danger:#b31217; --safe:#1d7a4a; --mono:ui-monospace,Consolas,monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#141011; --bg2:#1c1617; --ink:#f2eaea; --ink2:#c9b9b9; --line:#3a2b2c; }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,sans-serif;line-height:1.6;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.hero{
+  background:
+    radial-gradient(circle at 20px 20px, var(--red) 1.4px, transparent 1.6px) 0 0/16px 16px,
+    linear-gradient(180deg,var(--ink) 0%, var(--red-dark) 70%, var(--red) 100%);
+  color:#fff;padding:3rem 1.5rem 2.5rem;text-align:center
+}
+.hero h1{margin:.2rem 0;font-size:clamp(28px,5vw,42px);letter-spacing:1px}
+.hero h1 span{color:#ffd9d9}
+.hero p{color:#f0d6d6;max-width:620px;margin:.6rem auto 0;font-size:15px}
+.badge{display:inline-block;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.35);
+  border-radius:999px;padding:4px 14px;font-size:12px;letter-spacing:2px;text-transform:uppercase}
+main{max-width:780px;margin:0 auto;padding:1.5rem}
+section{margin:2.5rem 0;padding-top:.5rem}
+h2{font-size:21px;border-left:4px solid var(--red);padding-left:10px;margin-bottom:.3rem}
+.step{color:var(--red);font-weight:700;font-size:13px;letter-spacing:1px;text-transform:uppercase}
+p.lead{color:var(--ink2);font-size:15px}
+.card{background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:1.1rem 1.2rem;margin:1rem 0}
+pre{font-family:var(--mono);font-size:13.5px;white-space:pre-wrap;word-break:break-word;margin:0;line-height:1.7}
+.tag{color:var(--ink2)}
+.kw{color:var(--red-light);font-weight:600}
+input[type=text]{width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid var(--line);
+  background:var(--bg);color:var(--ink);font-family:var(--mono);font-size:14px}
+input[type=text]:focus{outline:2px solid var(--red-light);border-color:var(--red-light)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:.7rem}
+button{background:var(--red);color:#fff;border:0;border-radius:10px;padding:10px 16px;
+  font-size:13.5px;font-weight:600;cursor:pointer}
+button.ghost{background:transparent;border:1.5px solid var(--red);color:var(--red)}
+button:active{transform:scale(.97)}
+.status{font-size:13px;font-weight:600;padding:8px 12px;border-radius:8px;margin-top:.6rem;display:none}
+.status.safe{display:block;background:#e4f5ec;color:var(--safe)}
+.status.danger{display:block;background:#fbe2e2;color:var(--danger)}
+@media (prefers-color-scheme: dark){.status.safe{background:#123324}.status.danger{background:#3a1214}}
+.payloads{display:grid;gap:10px}
+.pl{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.pl code{font-family:var(--mono);font-size:13px;color:var(--red-light);word-break:break-word}
+.pl .why{color:var(--ink2);font-size:13px;margin-top:5px}
+.pl button{margin-top:8px}
+.copied{color:var(--safe);font-size:12px;font-weight:600;margin-left:8px}
+.flow{display:flex;align-items:center;justify-content:space-between;margin:1.2rem 0;position:relative}
+.flow .node{flex:1;text-align:center;font-size:12.5px;color:var(--ink2)}
+.flow .node i{display:block;width:46px;height:46px;border-radius:50%;background:var(--bg2);border:1.5px solid var(--line);
+  margin:0 auto 6px;font-size:20px;display:flex;align-items:center;justify-content:center}
+.flow .track{flex:2;height:2px;background:var(--line);position:relative;margin-top:-24px}
+.flow .fdot{position:absolute;top:-4px;left:0;width:10px;height:10px;border-radius:50%;background:var(--red);opacity:0}
+.flow .fdot.go{animation:travel 1.4s ease forwards}
+@keyframes travel{0%{left:0;opacity:1}90%{opacity:1}100%{left:calc(100% - 10px);opacity:1}}
+.steps{margin-top:.6rem}
+.steps div{opacity:0;transform:translateY(4px);transition:opacity .3s,transform .3s;font-size:13.5px;color:var(--ink2);padding:3px 0}
+.steps div.show{opacity:1;transform:none}
+.steps div b{color:var(--ink)}
+footer{text-align:center;color:var(--ink2);font-size:12px;padding:2rem 1rem}
+
+/* ===== shared reveal/animation system (same visual language as the other labs) ===== */
+.xv-wrap{margin-top:1.1rem;border:1px solid var(--line);border-radius:14px;padding:14px 16px;background:var(--bg2)}
+.xv-title{font-size:11.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink2);font-weight:700;margin-bottom:10px}
+
+.xv-boundary{position:relative;display:flex;gap:0;border-radius:10px;overflow:hidden;border:1.5px solid var(--line)}
+.xv-zone{flex:1;padding:16px 12px;text-align:center;font-size:12.5px;color:var(--ink2);position:relative;background:var(--bg);transition:background .35s,color .35s}
+.xv-zone .xv-ico{font-size:22px;display:block;margin-bottom:4px}
+.xv-zone.xv-data{border-right:1.5px dashed var(--line)}
+.xv-zone.xv-code.xv-hot{background:var(--red);color:#fff}
+.xv-zone.xv-code.xv-hot .xv-ico{animation:xv-shake .4s ease}
+.xv-zone.xv-data.xv-calm{background:#e4f5ec}
+@media (prefers-color-scheme: dark){.xv-zone.xv-data.xv-calm{background:#123324}}
+.xv-ball{position:absolute;top:50%;left:8%;width:12px;height:12px;border-radius:50%;background:var(--red);
+  transform:translate(0,-50%) scale(0);box-shadow:0 0 0 0 rgba(179,18,23,.5);z-index:2}
+.xv-ball.xv-fire-safe{animation:xv-hop-safe 1s ease forwards}
+.xv-ball.xv-fire-danger{animation:xv-hop-danger 1s ease forwards}
+@keyframes xv-hop-safe{0%{left:8%;transform:translate(0,-50%) scale(1)}100%{left:42%;transform:translate(0,-50%) scale(1)}}
+@keyframes xv-hop-danger{0%{left:8%;transform:translate(0,-50%) scale(1)}55%{left:50%;transform:translate(0,-70%) scale(1.15)}100%{left:88%;transform:translate(0,-50%) scale(1)}}
+@keyframes xv-shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-3px) rotate(-6deg)}75%{transform:translateX(3px) rotate(6deg)}}
+.xv-caption{text-align:center;font-size:12px;color:var(--ink2);margin-top:8px;min-height:16px}
+
+.xv-tl{display:flex;flex-direction:column;gap:0;margin-top:4px}
+.xv-tlrow{display:flex;gap:10px;align-items:flex-start;opacity:.25;transform:translateX(-6px);transition:opacity .35s,transform .35s}
+.xv-tlrow.on{opacity:1;transform:none}
+.xv-tlnum{flex:0 0 auto;width:22px;height:22px;border-radius:50%;background:var(--bg);border:1.5px solid var(--line);
+  display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--ink2);margin-top:1px}
+.xv-tlrow.on .xv-tlnum{background:var(--red);border-color:var(--red);color:#fff}
+.xv-tltext{font-size:13px;color:var(--ink2);padding-top:2px}
+.xv-tlrow.on .xv-tltext{color:var(--ink)}
+.xv-tlline{width:1.5px;background:var(--line);margin-left:10.25px;height:14px}
+.xv-tlrow.on + .xv-tlline{background:var(--red)}
+.xv-flash{position:relative}
+.xv-flash.xv-pulse::after{content:"";position:absolute;inset:0;border-radius:12px;pointer-events:none;
+  box-shadow:0 0 0 0 rgba(179,18,23,.55);animation:xv-ring .6s ease}
+@keyframes xv-ring{0%{box-shadow:0 0 0 0 rgba(179,18,23,.55)}100%{box-shadow:0 0 0 14px rgba(179,18,23,0)}}
+
+.xv-ctxmap{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.xv-ctx{border:1.5px solid var(--line);border-radius:10px;padding:10px;text-align:center;font-size:12px;color:var(--ink2);
+  background:var(--bg);opacity:0;transform:translateY(6px);transition:opacity .4s,transform .4s}
+.xv-ctx.show{opacity:1;transform:none}
+.xv-ctx .xv-ico{font-size:20px;display:block;margin-bottom:4px;animation:xv-float 2.6s ease-in-out infinite}
+.xv-ctx code{display:block;margin-top:5px;font-family:var(--mono);font-size:11px;color:var(--red-light);word-break:break-word}
+@keyframes xv-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+
+.xv-hijack{display:flex;align-items:center;gap:6px;justify-content:space-between;margin-top:6px}
+.xv-hpanel{flex:1;text-align:center;font-size:12px;color:var(--ink2);padding:10px 6px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg)}
+.xv-hpanel .xv-ico{font-size:24px;display:block;margin-bottom:4px}
+.xv-harrow{flex:0 0 28px;text-align:center;color:var(--red);font-size:18px;position:relative;overflow:visible}
+.xv-harrow span{display:inline-block;animation:xv-drift 1.4s ease-in-out infinite}
+@keyframes xv-drift{0%,100%{transform:translateX(0);opacity:.6}50%{transform:translateX(4px);opacity:1}}
+.xv-hpanel.xv-win{border-color:var(--red);background:#fde3e3}
+@media (prefers-color-scheme: dark){.xv-hpanel.xv-win{background:#4a1416}}
+
+/* ===== IDOR-specific additions ===== */
+.id-query{font-family:var(--mono);font-size:13px;line-height:1.9}
+.id-fixed{color:var(--ink2)}
+.id-slot{background:#fde3e3;color:#7a0d10;border-radius:4px;padding:1px 3px}
+.id-slot.danger{background:var(--red);color:#fff;font-weight:600}
+@media (prefers-color-scheme: dark){.id-slot{background:#4a1416;color:#ffb3b3}.id-slot.danger{background:var(--red);color:#fff}}
+.id-missing{display:block;margin-top:6px;color:var(--red);font-size:12px;font-weight:600}
+
+/* terminal */
+.id-term{border-radius:12px;overflow:hidden;border:1px solid var(--line);margin-top:1rem}
+.id-term .bar{background:#2a2222;padding:7px 10px;font-size:12px;color:#d8caca;display:flex;gap:6px;align-items:center}
+.id-term .screen{background:#120e0e;color:#8df0a0;font-family:var(--mono);font-size:12.5px;padding:14px;
+  min-height:70px;white-space:pre-wrap;word-break:break-word;line-height:1.7}
+.id-term .screen .err{color:#ff9b9b}
+.id-term .screen .hdr{color:#ffd9d9}
+.id-caret{display:inline-block;width:7px;height:13px;background:#8df0a0;vertical-align:-2px;animation:id-caret 1s step-end infinite}
+@keyframes id-caret{50%{opacity:0}}
+.id-sim-badge{display:inline-block;font-size:10.5px;letter-spacing:1px;text-transform:uppercase;font-weight:700;
+  color:var(--ink2);background:var(--bg2);border:1px solid var(--line);border-radius:999px;padding:2px 9px;margin-left:6px}
+
+/* record card */
+.id-rec{border:1.5px solid var(--line);border-radius:14px;padding:14px 16px;background:var(--bg);margin-top:1rem;
+  transition:border-color .3s,background .3s;perspective:800px}
+.id-rec.notyours{border-color:var(--red);background:#fde3e3}
+@media (prefers-color-scheme: dark){.id-rec.notyours{background:#3a1214}}
+.id-rec .head{display:flex;justify-content:space-between;align-items:center;font-size:11.5px;letter-spacing:1px;
+  text-transform:uppercase;font-weight:700;color:var(--ink2)}
+.id-rec .stamp{font-size:10.5px;padding:2px 9px;border-radius:999px;border:1.5px solid var(--line)}
+.id-rec .stamp.ok{color:var(--safe);border-color:var(--safe);background:#e4f5ec}
+.id-rec .stamp.bad{color:#fff;border-color:var(--red);background:var(--red)}
+@media (prefers-color-scheme: dark){.id-rec .stamp.ok{background:#123324}}
+.id-rec .body{margin-top:8px;animation:id-flip .45s ease}
+@keyframes id-flip{0%{transform:rotateX(-70deg);opacity:.15}100%{transform:rotateX(0);opacity:1}}
+.id-rec .r{display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-bottom:1px dashed var(--line);font-size:13px}
+.id-rec .r:last-child{border-bottom:0}
+.id-rec .r span{color:var(--ink2)}
+.id-rec .r b{font-family:var(--mono);font-weight:600;text-align:right}
+
+/* the missing-check comparison */
+.id-compare{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:1rem}
+@media (max-width:640px){.id-compare{grid-template-columns:1fr}}
+.id-panel{border:1.5px solid var(--line);border-radius:12px;padding:12px;background:var(--bg)}
+.id-panel.vuln{border-color:#e9b0b0}
+.id-panel .phead{font-size:11.5px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink2);margin-bottom:8px}
+.id-panel.vuln .phead{color:var(--red)}
+.id-panel pre{font-size:12px;background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:9px 10px}
+.id-pipe{position:relative;height:88px;margin-top:10px}
+.id-box{position:absolute;top:50%;transform:translateY(-50%);width:30%;border:1.5px solid var(--line);border-radius:9px;
+  background:var(--bg2);color:var(--ink2);font-size:11px;text-align:center;padding:8px 4px;line-height:1.35;z-index:2;
+  transition:background .3s,border-color .3s,color .3s}
+.id-box.req{left:0}
+.id-box.dbc{right:0}
+.id-box.leak{background:#fde3e3;border-color:var(--red);color:#7a0d10;font-weight:600}
+.id-box.deny{background:var(--bg2);border-color:var(--red);color:var(--red);font-weight:600}
+@media (prefers-color-scheme: dark){.id-box.leak{background:#4a1416;color:#ffb3b3}}
+.id-gate{position:absolute;left:50%;top:0;bottom:0;transform:translateX(-50%);width:26%;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:2px;font-size:9.5px;letter-spacing:.5px;text-transform:uppercase;
+  color:var(--ink2);border-left:2px dashed var(--line);z-index:1;transition:border-color .3s}
+.id-gate .ico{font-size:17px;line-height:1}
+.id-panel.fixed .id-gate{border-left:2px solid var(--red)}
+.id-gate.deny{animation:id-gshake .4s ease}
+@keyframes id-gshake{0%,100%{transform:translateX(-50%)}30%{transform:translateX(calc(-50% - 4px))}70%{transform:translateX(calc(-50% + 4px))}}
+.id-pk{position:absolute;top:50%;left:15%;width:12px;height:12px;margin-top:-6px;border-radius:50%;background:var(--red);opacity:0;z-index:3}
+.id-pk.pass{animation:id-pass 1.2s ease forwards}
+.id-pk.block{animation:id-block 1.2s ease forwards}
+@keyframes id-pass{0%{left:15%;opacity:1}100%{left:85%;opacity:1}}
+@keyframes id-block{0%{left:15%;opacity:1}55%{left:40%;opacity:1}100%{left:33%;opacity:0}}
+
+/* object-reference type cards */
+.id-opgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.id-op{border:1.5px solid var(--line);border-radius:12px;padding:12px;background:var(--bg);
+  opacity:0;transform:translateY(8px) scale(.97);transition:opacity .4s,transform .4s}
+.id-op.show{opacity:1;transform:none}
+.id-op .name{font-weight:700;font-size:13px;margin-bottom:6px}
+.id-op .row2{font-size:11.5px;color:var(--ink2);margin-top:5px}
+.id-op .row2 code{font-family:var(--mono);font-size:11px;color:var(--red-light);word-break:break-word}
+
+/* escalation matrix */
+.id-matrix{position:relative;display:grid;grid-template-columns:56px repeat(4,1fr);
+  grid-template-rows:26px repeat(4,1fr);gap:6px;height:300px;margin-top:12px}
+.id-colhead{font-size:10.5px;font-weight:700;color:var(--ink2);display:flex;align-items:flex-end;justify-content:center;
+  text-align:center;padding-bottom:2px;line-height:1.2}
+.id-rowhead{font-size:10.5px;font-weight:700;color:var(--ink2);display:flex;align-items:center;justify-content:flex-end;padding-right:4px}
+.id-cell{border:1.5px solid var(--line);border-radius:9px;background:var(--bg2);transition:background .35s,border-color .35s}
+.id-cell.hl{border-color:var(--red);background:#fde3e3}
+@media (prefers-color-scheme: dark){.id-cell.hl{background:#4a1416}}
+.id-marker{position:absolute;width:24px;height:24px;border-radius:50%;background:var(--red);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;
+  transform:translate(-50%,-50%);z-index:5;box-shadow:0 0 0 0 rgba(179,18,23,.5);
+  transition:left .65s cubic-bezier(.34,1.4,.64,1),top .65s cubic-bezier(.34,1.4,.64,1);
+  animation:id-mpulse 2.2s ease-in-out infinite}
+@keyframes id-mpulse{0%,100%{box-shadow:0 0 0 0 rgba(179,18,23,.45)}60%{box-shadow:0 0 0 9px rgba(179,18,23,0)}}
+.id-matrixlegend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--ink2);margin-top:10px}
+.id-matrixlegend b{color:var(--ink)}
+
+/* enumeration */
+.id-enum{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.id-chip{border:1.5px solid var(--line);border-radius:999px;padding:5px 12px;font-family:var(--mono);font-size:12px;
+  color:var(--ink2);background:var(--bg);transition:all .3s}
+.id-chip.hit{border-color:var(--red);background:#fde3e3;color:#7a0d10;font-weight:600;transform:scale(1.05)}
+@media (prefers-color-scheme: dark){.id-chip.hit{background:#4a1416;color:#ffb3b3}}
+.id-progress{height:6px;border-radius:999px;background:var(--line);margin-top:14px;overflow:hidden}
+.id-progress-fill{height:100%;width:0;background:var(--red);transition:width .35s ease}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <span class="badge">Securinets Esprit</span>
+  <h1>IDOR <span>— Insecure Direct Object Reference</span></h1>
+  <p>A hands-on walkthrough. No quotes, no semicolons, no code — just a different number. You will watch a
+  single changed digit hand back somebody else's data, live, in your browser. Everything below is simulated.</p>
+</div>
+
+<main>
+
+<!-- ============================================================ STEP 1 -->
+<section id="s1">
+  <div class="step">Step 1 — the code behind the "view invoice" link</div>
+  <h2>Where does your typing go?</h2>
+  <p class="lead">You are logged in as <b>alice</b>. The page shows your invoice with a link that ends in a
+  number — the invoice's <b>id</b>. Below is exactly what the backend does with that number: it drops it
+  straight into a database query. Look at what it does <b>not</b> do.</p>
+
+  <div class="card">
+    <pre class="id-query"><span class="id-fixed">GET /invoice?id=</span><span id="slot" class="id-slot">1042</span><span class="id-fixed"> HTTP/1.1
+
+SELECT * FROM invoices WHERE id = </span><span id="slotQuery" class="id-slot">1042</span><span class="id-fixed">;</span>
+<span class="id-missing">-- ⚠ nothing on this line checks that #1042 belongs to you</span></pre>
+  </div>
+
+  <input type="text" id="liveInput" value="1042" placeholder="Type an invoice id, e.g. 1042" autocomplete="off">
+  <div id="status1" class="status"></div>
+
+  <div class="xv-wrap">
+    <div class="xv-title">Live view — whose record comes back?</div>
+    <div class="xv-boundary" id="xvBoundary">
+      <div class="xv-zone xv-data" id="xvZoneData"><span class="xv-ico">📄</span>Your records<br>(owner_id = you)</div>
+      <div class="xv-zone xv-code" id="xvZoneCode"><span class="xv-ico">🗄️</span>Everyone else's<br>(no check at all)</div>
+      <div class="xv-ball" id="xvBall"></div>
+    </div>
+    <div class="xv-caption" id="xvCaption">Start typing above — watch which side the dot lands on.</div>
+  </div>
+</section>
+
+<!-- ============================================================ STEP 2 -->
+<section id="s2">
+  <div class="step">Step 2 — your first real payload</div>
+  <h2>Change one digit. Read someone else's invoice.</h2>
+  <p class="lead">There is no special syntax here. No quotes, no <code>OR 1=1</code>, no <code>&lt;script&gt;</code>.
+  An IDOR payload is simply <b>a different valid id</b>. The app trusts that the number you sent is a number
+  you are allowed to see — and nothing more.</p>
+
+  <div class="pl">
+    <code id="p1">1041</code>
+    <div class="why">Your own invoice is <code>1042</code>. This one is <code>1041</code> — one digit lower, and
+    it belongs to a different customer. The server looks up whatever id you name and hands the row back,
+    because the query never asks <i>"does this row belong to the person asking?"</i></div>
+    <div class="row">
+      <button onclick="loadId('1041','copiedMsg')">Use this payload</button>
+      <span class="copied" id="copiedMsg"></span>
+    </div>
+  </div>
+
+  <div class="xv-title" style="margin-top:1.4rem">What the server actually returned</div>
+  <div class="id-rec" id="recCard">
+    <div class="head"><span id="recHead">Invoice #1042</span><span id="recStamp" class="stamp ok">YOURS</span></div>
+    <div class="body" id="recBody">
+      <div class="r"><span>Billed to</span><b>—</b></div>
+      <div class="r"><span>Email</span><b>—</b></div>
+      <div class="r"><span>Item</span><b>—</b></div>
+      <div class="r"><span>Amount</span><b>—</b></div>
+      <div class="r"><span>Status</span><b>—</b></div>
+    </div>
+  </div>
+
+  <p class="lead" style="margin-top:1rem">The console below is a simulated backend — it sends the exact
+  request shown above and prints the response the way a vulnerable server would.</p>
+
+  <div class="xv-flash" id="xvTermFlash">
+    <div class="id-term">
+      <div class="bar"><span class="dot" style="background:#ff6159"></span><span class="dot" style="background:#ffbd2e"></span><span class="dot" style="background:#27c93f"></span>
+        &nbsp;shop.example — simulated server<span class="id-sim-badge">simulated</span></div>
+      <div class="screen" id="idConsole">waiting for an id above<span class="id-caret"></span></div>
+    </div>
+  </div>
+  <div id="idStatus2" class="status"></div>
+
+  <div class="xv-wrap">
+    <div class="xv-title">What happens, step by step</div>
+    <div class="xv-tl" id="xvTimeline">
+      <div class="xv-tlrow" id="xvT1"><div class="xv-tlnum">1</div><div class="xv-tltext">Your browser is logged in as alice — the session cookie says "I am user 7".</div></div>
+      <div class="xv-tlline"></div>
+      <div class="xv-tlrow" id="xvT2"><div class="xv-tlnum">2</div><div class="xv-tltext">The link carries a raw record id: <code>/invoice?id=1042</code>. The server reads that number straight out of the URL.</div></div>
+      <div class="xv-tlline"></div>
+      <div class="xv-tlrow" id="xvT3"><div class="xv-tlnum">3</div><div class="xv-tltext">The query is <code>WHERE id = 1042</code> — by id alone. Nothing compares the row's owner to your session.</div></div>
+      <div class="xv-tlline"></div>
+      <div class="xv-tlrow" id="xvT4"><div class="xv-tlnum">4</div><div class="xv-tltext">Change 1042 → 1041 and the exact same query returns a different person's invoice. The server never noticed anything unusual.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ STEP 3 -->
+<section id="s3">
+  <div class="step">Step 3 — the check that isn't there</div>
+  <h2>Authentication ≠ authorization</h2>
+  <p class="lead">The server <i>did</i> check that you're logged in. That's authentication. What it never did
+  was check <b>whether this specific record belongs to you</b> — that's authorization. IDOR is almost always
+  that second check going missing.</p>
+
+  <div class="id-compare">
+    <div class="id-panel vuln">
+      <div class="phead">❌ What the app does</div>
+      <pre class="id-query">SELECT * FROM invoices
+WHERE id = 1041;</pre>
+      <div class="id-pipe">
+        <div class="id-box req">request<br>id=1041</div>
+        <div class="id-gate" id="gateVuln"><span class="ico">⛓️</span>no check</div>
+        <div class="id-box dbc" id="dbVuln">Bob's invoice</div>
+        <div class="id-pk" id="pkVuln"></div>
+      </div>
+    </div>
+    <div class="id-panel fixed">
+      <div class="phead">✅ What it should do</div>
+      <pre class="id-query">SELECT * FROM invoices
+WHERE id = 1041
+  AND owner_id = 7;</pre>
+      <div class="id-pipe">
+        <div class="id-box req">request<br>id=1041</div>
+        <div class="id-gate" id="gateFixed"><span class="ico">🔒</span>owner check</div>
+        <div class="id-box dbc" id="dbFixed">Bob's invoice</div>
+        <div class="id-pk" id="pkFixed"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row"><button onclick="runGates()">Run both requests</button></div>
+  <div id="gateStatus" class="status"></div>
+
+  <p class="lead" style="margin-top:1rem;font-size:13.5px"><b>The one-line fix:</b> every query that fetches
+  an object by id must also filter by the owner taken from the <i>session</i> — never from the request. If the
+  row comes back empty, answer <code>404</code> (not <code>403</code>, which still tells the attacker the
+  record exists).</p>
+</section>
+
+<!-- ============================================================ STEP 4 -->
+<section id="s4">
+  <div class="step">Step 4 — object references aren't all numbers</div>
+  <h2>Same flaw, different disguise</h2>
+  <p class="lead">"Direct object reference" means whatever the app uses to name a thing: a number, a UUID, a
+  filename, a hidden form field. The flaw is the same in every case — the app lets <i>you</i> supply the
+  reference and never checks that it's yours. Making the reference harder to guess does not fix it.</p>
+
+  <div class="xv-wrap">
+    <div class="xv-title">Six ways a record can be named</div>
+    <div class="id-opgrid" id="idOpGrid">
+      <div class="id-op" id="op1"><div class="name">🔢 Sequential ids</div>
+        <div class="row2"><code>?id=1041</code></div>
+        <div class="row2">The easiest to walk. Every customer sits one number away from the next.</div></div>
+      <div class="id-op" id="op2"><div class="name">🆔 UUIDs</div>
+        <div class="row2"><code>?id=550e8400-e29b-…</code></div>
+        <div class="row2">Hard to guess — but they leak constantly in emails, API responses, JS bundles and referrer headers. Unguessable is not the same as unauthorized.</div></div>
+      <div class="id-op" id="op3"><div class="name">🔐 Encoded ids</div>
+        <div class="row2"><code>?id=MTA0MQ==</code></div>
+        <div class="row2">That's just base64 for <code>1041</code>. Encoding is not a security control — decode, change, re-encode.</div></div>
+      <div class="id-op" id="op4"><div class="name">📝 Hidden form fields</div>
+        <div class="row2"><code>&lt;input type="hidden" name="user_id" value="7"&gt;</code></div>
+        <div class="row2">Anything the browser sends can be edited. Hidden just means "not displayed".</div></div>
+      <div class="id-op" id="op5"><div class="name">🔁 HTTP method</div>
+        <div class="row2"><code>PATCH /api/users/8</code></div>
+        <div class="row2">Developers protect <code>GET</code> and forget <code>PUT</code>, <code>PATCH</code> and <code>DELETE</code> — writes are where the real damage is.</div></div>
+      <div class="id-op" id="op6"><div class="name">📁 File names</div>
+        <div class="row2"><code>?file=invoice_1041.pdf</code></div>
+        <div class="row2">Filenames and paths are object references too, and often the only thing standing between you and someone's documents.</div></div>
+    </div>
+  </div>
+
+  <p class="lead" style="margin-top:1rem">That's also why attackers start by looking at what the app already
+  sends them — their own profile URL, their own invoice id, their own API responses — to learn the naming
+  scheme before touching anything else.</p>
+</section>
+
+<!-- ============================================================ STEP 5 -->
+<section id="s5">
+  <div class="step">Step 5 — more ways in</div>
+  <h2>Where the id can hide</h2>
+  <p class="lead">An id doesn't have to sit in the URL. Anywhere the client supplies a reference is a
+  candidate. Click a payload below to load it into the box above and watch the record swap.</p>
+
+  <div class="xv-wrap" style="margin-bottom:1rem">
+    <div class="xv-title">Three places your id can land</div>
+    <div class="xv-ctxmap" id="xvCtxMap">
+      <div class="xv-ctx" id="xvCtx1"><span class="xv-ico">🔗</span>In the query string<code>/invoice?id=[you]</code></div>
+      <div class="xv-ctx" id="xvCtx2"><span class="xv-ico">🧭</span>In the URL path<code>/api/users/[you]</code></div>
+      <div class="xv-ctx" id="xvCtx3"><span class="xv-ico">📦</span>In the request body<code>{"user_id": [you]}</code></div>
+    </div>
+  </div>
+
+  <div class="payloads" id="payloadList"></div>
+</section>
+
+<!-- ============================================================ STEP 6 -->
+<section id="s6">
+  <div class="step">Step 6 — horizontal vs vertical</div>
+  <h2>Two directions you can break out in</h2>
+  <p class="lead"><b>Horizontal</b> means staying at your own privilege level and reading another user's data —
+  Bob's invoices, Carol's messages. <b>Vertical</b> means climbing to a higher privilege level — a normal
+  user reaching admin-only records or actions. Both are IDOR; both come from the same missing check.</p>
+
+  <div class="xv-wrap">
+    <div class="xv-title">Live view — where the attacker can move</div>
+    <div class="id-matrix" id="idMatrix">
+      <div class="id-colhead"></div>
+      <div class="id-colhead">Alice<br>(you)</div>
+      <div class="id-colhead">Bob</div>
+      <div class="id-colhead">Carol</div>
+      <div class="id-colhead">Admin</div>
+
+      <div class="id-rowhead">Admin</div>
+      <div class="id-cell" data-r="0" data-c="0"></div>
+      <div class="id-cell" data-r="0" data-c="1"></div>
+      <div class="id-cell" data-r="0" data-c="2"></div>
+      <div class="id-cell" data-r="0" data-c="3"></div>
+
+      <div class="id-rowhead">Staff</div>
+      <div class="id-cell" data-r="1" data-c="0"></div>
+      <div class="id-cell" data-r="1" data-c="1"></div>
+      <div class="id-cell" data-r="1" data-c="2"></div>
+      <div class="id-cell" data-r="1" data-c="3"></div>
+
+      <div class="id-rowhead">User</div>
+      <div class="id-cell" data-r="2" data-c="0"></div>
+      <div class="id-cell" data-r="2" data-c="1"></div>
+      <div class="id-cell" data-r="2" data-c="2"></div>
+      <div class="id-cell" data-r="2" data-c="3"></div>
+
+      <div class="id-rowhead">Guest</div>
+      <div class="id-cell" data-r="3" data-c="0"></div>
+      <div class="id-cell" data-r="3" data-c="1"></div>
+      <div class="id-cell" data-r="3" data-c="2"></div>
+      <div class="id-cell" data-r="3" data-c="3"></div>
+
+      <div class="id-marker" id="idMarker">👤</div>
+    </div>
+    <div class="id-matrixlegend">
+      <span><b>You start here:</b> Alice · User</span>
+      <span>➡️ horizontal = same row, different person</span>
+      <span>⬆️ vertical = same person, higher row</span>
+    </div>
+    <div class="row">
+      <button onclick="escalate('h')">Try horizontal →</button>
+      <button class="ghost" onclick="escalate('v')">Try vertical ↑</button>
+      <button class="ghost" onclick="escalate('reset')">Reset</button>
+    </div>
+    <div class="xv-caption" id="escCaption">The marker is you: Alice, a normal user.</div>
+  </div>
+</section>
+
+<!-- ============================================================ STEP 7 -->
+<section id="s7">
+  <div class="step">Step 7 — at scale</div>
+  <h2>Why nobody needs to be clever about this</h2>
+  <p class="lead">A script doesn't need to be smart. Sequential ids mean an attacker can just walk the range
+  and collect whatever comes back. Every request in this sweep returns <code>200 OK</code> with somebody's
+  data — there is no point at which the server says "that one isn't yours".</p>
+
+  <div class="xv-wrap">
+    <div class="xv-title">Simulated enumeration — one request every 0.4 seconds</div>
+    <div class="id-enum" id="enumRow"></div>
+    <div class="id-progress"><div class="id-progress-fill" id="enumBar"></div></div>
+    <div class="row"><button onclick="runEnum()">Start enumerating</button></div>
+    <div id="enumStatus" class="status"></div>
+  </div>
+</section>
+
+<!-- ============================================================ STEP 8 -->
+<section id="s8">
+  <div class="step">Step 8 — why this is a big deal</div>
+  <h2>It's never just "one extra invoice"</h2>
+  <p class="lead">Reading one other invoice proves the check is missing. In a real attack, the same flaw means
+  <i>every</i> record in that table — and, once the id shows up on a write endpoint, it means changing
+  somebody else's account.</p>
+
+  <div class="xv-wrap" style="margin-bottom:1rem">
+    <div class="xv-title">One number → every record → account takeover</div>
+    <div class="xv-hijack">
+      <div class="xv-hpanel"><span class="xv-ico">🔗</span>One id in<br>one URL</div>
+      <div class="xv-harrow"><span>➜</span></div>
+      <div class="xv-hpanel"><span class="xv-ico">🗂️</span>Every customer's<br>records</div>
+      <div class="xv-harrow"><span>➜</span></div>
+      <div class="xv-hpanel xv-win"><span class="xv-ico">🕶️</span>Account<br>takeover</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="xv-title" style="margin-bottom:8px">A realistic chain</div>
+    <div class="steps" id="chainSteps">
+      <div id="cs1"><b>1.</b> <code>PATCH /api/users/8</code> accepts a new email for user 8 — and never checks that you <i>are</i> user 8.</div>
+      <div id="cs2"><b>2.</b> The attacker sets user 8's email to their own address. No password needed.</div>
+      <div id="cs3"><b>3.</b> They hit "forgot password" on the login page with that email.</div>
+      <div id="cs4"><b>4.</b> The reset link lands in the attacker's inbox. They now own the account — and if user 8 was an admin, they own the app.</div>
+    </div>
+  </div>
+
+  <p class="lead">Ask yourself every time: <b>what is the app using to name this thing, who supplies it, and
+  does the server verify it belongs to the person asking?</b></p>
+</section>
+
+</main>
+<footer>Securinets Esprit — Web Exploitation Workshop</footer>
+
+<script>
+/* ================= helpers ================= */
+function decodeHtml(s){ const t=document.createElement('textarea'); t.innerHTML=s; return t.value; }
+
+const typeTimers = {};
+function typeInto(screen, html, speed){
+  speed = speed || 55;
+  if(typeTimers[screen.id]) clearInterval(typeTimers[screen.id]);
+  const lines = html.split('\n');
+  let out = '', idx = 0;
+  screen.innerHTML = '<span class="id-caret"></span>';
+  typeTimers[screen.id] = setInterval(()=>{
+    if(idx >= lines.length){
+      clearInterval(typeTimers[screen.id]);
+      screen.innerHTML = out + '<span class="id-caret"></span>';
+      return;
+    }
+    out += (idx>0 ? '\n' : '') + lines[idx];
+    screen.innerHTML = out + '<span class="id-caret"></span>';
+    idx++;
+  }, speed);
+}
+
+/* ================= the fake dataset ================= */
+const YOUR_ID = 1042;
+const INVOICES = {
+  1040:{who:'Carol Nunes',  email:'carol@northwind.example', item:'2× Team seats',        amount:'€312.00',  status:'paid'},
+  1041:{who:'Bob Martin',   email:'bob@corp.example',       item:'12× Team seats + SSO',  amount:'€1,280.00',status:'paid'},
+  1042:{who:'You (alice)',  email:'alice@example.com',      item:'1× Pro plan',           amount:'€49.00',   status:'paid'},
+  1043:{who:'Dan Okafor',   email:'dan@lumen.example',      item:'1× Starter plan',       amount:'€9.99',    status:'unpaid'}
+};
+
+/* ================= step 1/2 live render ================= */
+const liveInput = document.getElementById('liveInput');
+let detailTimer = null;
+
+function render(v){
+  const raw = (v || '').trim();
+  const isNum = /^\d+$/.test(raw);
+  const num = isNum ? parseInt(raw, 10) : null;
+  const isOther = isNum && num !== YOUR_ID;
+  const rec = isNum ? INVOICES[num] : null;
+  const label = raw || '1042';
+
+  /* --- query preview --- */
+  const slot = document.getElementById('slot');
+  const slotQ = document.getElementById('slotQuery');
+  slot.textContent = label;
+  slotQ.textContent = label;
+  const slotCls = 'id-slot' + (isOther ? ' danger' : '');
+  slot.className = slotCls;
+  slotQ.className = slotCls;
+
+  /* --- status 1 --- */
+  const status1 = document.getElementById('status1');
+  if(!raw){
+    status1.className = 'status'; status1.textContent = '';
+  } else if(!isNum){
+    status1.className = 'status safe';
+    status1.textContent = 'The backend expects a numeric id — anything else just returns no rows.';
+  } else if(isOther){
+    status1.className = 'status danger';
+    status1.textContent = "You named a record you don't own — and nothing in the backend is stopping it.";
+  } else {
+    status1.className = 'status safe';
+    status1.textContent = 'This is your own record. The page was built to show it to you.';
+  }
+
+  /* --- debounce the heavier bits so typing stays smooth --- */
+  clearTimeout(detailTimer);
+  detailTimer = setTimeout(()=>renderDetail(raw, isNum, num, rec, isOther), 180);
+}
+
+function renderDetail(raw, isNum, num, rec, isOther){
+  const screen = document.getElementById('idConsole');
+  const status2 = document.getElementById('idStatus2');
+  const card = document.getElementById('recCard');
+  const head = document.getElementById('recHead');
+  const stamp = document.getElementById('recStamp');
+  const bodyEl = document.getElementById('recBody');
+
+  /* ---------- empty ---------- */
+  if(!raw){
+    status2.className = 'status'; status2.textContent = '';
+    screen.innerHTML = 'waiting for an id above<span class="id-caret"></span>';
+    card.className = 'id-rec';
+    head.textContent = 'Invoice —';
+    stamp.textContent = ''; stamp.className = 'stamp';
+    bodyEl.innerHTML = '<div class="r"><span>Billed to</span><b>—</b></div>'+
+                       '<div class="r"><span>Email</span><b>—</b></div>'+
+                       '<div class="r"><span>Item</span><b>—</b></div>'+
+                       '<div class="r"><span>Amount</span><b>—</b></div>'+
+                       '<div class="r"><span>Status</span><b>—</b></div>';
+    return;
+  }
+
+  /* ---------- not a number ---------- */
+  if(!isNum){
+    status2.className = 'status safe';
+    status2.textContent = 'Not a valid id — the query returns zero rows.';
+    typeInto(screen, `<span class="hdr">$ curl -s "https://shop.example/invoice?id=${raw}"</span>
+
+HTTP/1.1 400 Bad Request
+Content-Type: application/json
+
+<span class="err">{"error":"id must be a number"}</span>`);
+    card.className = 'id-rec';
+    head.textContent = 'Invoice —';
+    stamp.textContent = ''; stamp.className = 'stamp';
+    bodyEl.innerHTML = '<div class="r"><span>Result</span><b>no rows</b></div>';
+    return;
+  }
+
+  /* ---------- 404 ---------- */
+  if(!rec){
+    status2.className = 'status safe';
+    status2.textContent = 'That id does not exist — this is what enumeration looks like: walk the numbers until one returns data.';
+    typeInto(screen, `<span class="hdr">$ curl -s -H "Cookie: session=alice" "https://shop.example/invoice?id=${num}"</span>
+
+HTTP/1.1 404 Not Found
+Content-Type: application/json
+
+<span class="err">{"error":"invoice not found"}</span>`);
+    card.className = 'id-rec';
+    head.textContent = `Invoice #${num}`;
+    stamp.textContent = 'NOT FOUND'; stamp.className = 'stamp';
+    bodyEl.innerHTML = '<div class="r"><span>Result</span><b>no such record</b></div>';
+    return;
+  }
+
+  /* ---------- a real record ---------- */
+  const isYours = num === YOUR_ID;
+
+  if(isYours){
+    status2.className = 'status safe';
+    status2.textContent = 'This is your own invoice — the record the page was designed to show you.';
+  } else {
+    status2.className = 'status danger';
+    status2.textContent = 'This is really happening: the server returned a record that belongs to somebody else.';
+  }
+
+  const json = `{
+  "id": ${num},
+  "owner": "${rec.email}",
+  "item": "${rec.item}",
+  "amount": "${rec.amount}",
+  "status": "${rec.status}"
+}`;
+  const foot = isYours
+    ? '\n\n<span class="hdr">-- this is your own invoice --</span>'
+    : `\n\n<span class="err">You are alice@example.com. This invoice belongs to ${rec.email}.</span>`;
+
+  typeInto(screen, `<span class="hdr">$ curl -s -H "Cookie: session=alice" "https://shop.example/invoice?id=${num}"</span>
+
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+${json}${foot}`);
+
+  card.className = 'id-rec' + (isYours ? '' : ' notyours');
+  head.textContent = `Invoice #${num}`;
+  stamp.textContent = isYours ? 'YOURS' : 'NOT YOURS';
+  stamp.className = 'stamp ' + (isYours ? 'ok' : 'bad');
+  bodyEl.innerHTML =
+    `<div class="r"><span>Billed to</span><b>${rec.who}</b></div>`+
+    `<div class="r"><span>Email</span><b>${rec.email}</b></div>`+
+    `<div class="r"><span>Item</span><b>${rec.item}</b></div>`+
+    `<div class="r"><span>Amount</span><b>${rec.amount}</b></div>`+
+    `<div class="r"><span>Status</span><b>${rec.status}</b></div>`;
+  bodyEl.style.animation = 'none';
+  void bodyEl.offsetWidth;
+  bodyEl.style.animation = '';
+}
+
+/* ================= payload loader ================= */
+function loadId(id, msgId){
+  liveInput.value = id;
+  render(id);
+  playBoundary(id);
+  if(msgId){
+    const m = document.getElementById(msgId);
+    if(m){ m.textContent = 'loaded above ↑'; setTimeout(()=>m.textContent = '', 2000); }
+  }
+  document.getElementById('s1').scrollIntoView({behavior:'smooth', block:'center'});
+}
+
+/* ================= boundary ball ================= */
+const ball = document.getElementById('xvBall');
+const zoneData = document.getElementById('xvZoneData');
+const zoneCode = document.getElementById('xvZoneCode');
+const caption = document.getElementById('xvCaption');
+
+function playBoundary(v){
+  const raw = (v || '').trim();
+  const isNum = /^\d+$/.test(raw);
+  const isOther = isNum && parseInt(raw,10) !== YOUR_ID;
+
+  zoneData.classList.remove('xv-calm');
+  zoneCode.classList.remove('xv-hot');
+  ball.classList.remove('xv-fire-safe','xv-fire-danger');
+  void ball.offsetWidth;
+
+  if(!raw){
+    caption.textContent = 'Start typing above — watch which side the dot lands on.';
+    return;
+  }
+  if(!isNum){
+    caption.textContent = 'Not a valid id — the server finds nothing.';
+    return;
+  }
+  if(isOther){
+    ball.classList.add('xv-fire-danger');
+    setTimeout(()=>zoneCode.classList.add('xv-hot'), 550);
+    caption.textContent = 'You named someone else\u2019s record — and it came back anyway. Nothing checked.';
+  } else {
+    ball.classList.add('xv-fire-safe');
+    setTimeout(()=>zoneData.classList.add('xv-calm'), 550);
+    caption.textContent = 'Your own record. Now change one digit and watch the dot cross the line.';
+  }
+}
+liveInput.addEventListener('input', ()=>playBoundary(liveInput.value));
+
+/* ================= step 3: the gate ================= */
+function runGates(){
+  const pv = document.getElementById('pkVuln');
+  const pf = document.getElementById('pkFixed');
+  const dbV = document.getElementById('dbVuln');
+  const dbF = document.getElementById('dbFixed');
+  const gF  = document.getElementById('gateFixed');
+  const st  = document.getElementById('gateStatus');
+
+  dbV.textContent = "Bob's invoice";
+  dbF.textContent = "Bob's invoice";
+  dbV.className = 'id-box dbc';
+  dbF.className = 'id-box dbc';
+  gF.classList.remove('deny');
+
+  [pv, pf].forEach(p=>{ p.classList.remove('pass','block'); void p.offsetWidth; });
+  pv.classList.add('pass');
+  pf.classList.add('block');
+
+  st.className = 'status'; st.textContent = '';
+
+  setTimeout(()=>{
+    dbF.textContent = '403 Forbidden';
+    dbF.classList.add('deny');
+    gF.classList.add('deny');
+  }, 850);
+
+  setTimeout(()=>{
+    dbV.classList.add('leak');
+    gF.classList.remove('deny');
+    st.className = 'status danger';
+    st.textContent = 'Left: one request, somebody else\u2019s invoice. Right: the same request, refused — because the query asked who owns the row.';
+  }, 1250);
+}
+
+/* ================= step 4: reveal cards ================= */
+/* ================= step 5: payload list ================= */
+const payloads = [
+  {code:'1041', load:'1041',
+   why:"Bob's invoice. One digit below your own id (1042). The server has no idea the record isn't yours."},
+  {code:'1040', load:'1040',
+   why:"Carol's. The ids are sequential, which means every customer's record sits one number away from the next."},
+  {code:'1043', load:'1043',
+   why:"Dan's — and it's marked <b>unpaid</b>. Notice you never logged in as anybody. Your session is still alice."},
+  {code:'9999', load:'9999',
+   why:"Nothing here. This is what makes enumeration practical: walk the numbers until one returns data, then keep walking."},
+  {code:'MTA0MQ==  →  1041', load:'1041',
+   why:"Base64 of <code>1041</code>. Encoding is not a security control — decode it, change it, re-encode it, send it back."}
+];
+const list = document.getElementById('payloadList');
+payloads.forEach((p, i)=>{
+  const div = document.createElement('div');
+  div.className = 'pl';
+  div.innerHTML = `<code>${p.code.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</code>
+    <div class="why">${p.why}</div>
+    <div class="row"><button onclick="loadId('${p.load}','')">Load it above</button></div>`;
+  list.appendChild(div);
+});
+
+/* ================= step 6: escalation matrix ================= */
+const matrix = document.getElementById('idMatrix');
+const marker = document.getElementById('idMarker');
+const escCaption = document.getElementById('escCaption');
+let curR = 2, curC = 0;
+
+function placeMarker(r, c){
+  const cell = matrix.querySelector(`.id-cell[data-r="${r}"][data-c="${c}"]`);
+  if(!cell) return;
+  marker.style.left = (cell.offsetLeft + cell.offsetWidth / 2) + 'px';
+  marker.style.top  = (cell.offsetTop + cell.offsetHeight / 2) + 'px';
+}
+
+function clearHL(){
+  matrix.querySelectorAll('.id-cell').forEach(el => el.classList.remove('hl'));
+}
+
+function escalate(dir){
+  clearHL();
+  if(dir === 'h'){
+    curR = 2; curC = 1;
+    placeMarker(curR, curC);
+    const c = matrix.querySelector('.id-cell[data-r="2"][data-c="1"]');
+    if(c) c.classList.add('hl');
+    escCaption.textContent = 'Horizontal: same privilege level, different person. You now read Bob\u2019s data as a normal user.';
+  } else if(dir === 'v'){
+    curR = 0; curC = 0;
+    placeMarker(curR, curC);
+    const c = matrix.querySelector('.id-cell[data-r="0"][data-c="0"]');
+    if(c) c.classList.add('hl');
+    escCaption.textContent = 'Vertical: you climbed to admin-only records. Same missing check — much bigger blast radius.';
+  } else {
+    curR = 2; curC = 0;
+    placeMarker(curR, curC);
+    escCaption.textContent = 'The marker is you: Alice, a normal user.';
+  }
+}
+
+window.addEventListener('resize', ()=>placeMarker(curR, curC));
+
+/* ================= step 7: enumeration ================= */
+const SWEEP = [
+  {id:1036, who:'maya'}, {id:1037, who:'tom'},  {id:1038, who:'sofia'},
+  {id:1039, who:'liam'}, {id:1040, who:'carol'}, {id:1041, who:'bob'},
+  {id:1042, who:'you'},  {id:1043, who:'dan'},   {id:1044, who:'priya'},
+  {id:1045, who:'omar'}
+];
+let enumTimer = null;
+
+function runEnum(){
+  const row = document.getElementById('enumRow');
+  const bar = document.getElementById('enumBar');
+  const st  = document.getElementById('enumStatus');
+
+  if(enumTimer) clearInterval(enumTimer);
+
+  row.innerHTML = '';
+  SWEEP.forEach(s=>{
+    const chip = document.createElement('span');
+    chip.className = 'id-chip';
+    chip.id = 'chip' + s.id;
+    chip.textContent = s.id;
+    row.appendChild(chip);
+  });
+
+  bar.style.width = '0%';
+  st.className = 'status'; st.textContent = '';
+
+  let i = 0;
+  enumTimer = setInterval(()=>{
+    if(i >= SWEEP.length){
+      clearInterval(enumTimer);
+      st.className = 'status danger';
+      st.textContent = '10 requests, 10 different customers\u2019 records. Not one of them was refused.';
+      return;
+    }
+    const s = SWEEP[i];
+    const chip = document.getElementById('chip' + s.id);
+    if(chip){
+      chip.classList.add('hit');
+      chip.textContent = s.id + ' · ' + s.who;
+    }
+    bar.style.width = Math.round(((i + 1) / SWEEP.length) * 100) + '%';
+    i++;
+  }, 420);
+}
+
+/* ================= timeline driven by status2 ================= */
+let tlState = false;
+const status2El = document.getElementById('idStatus2');
+const flashBox  = document.getElementById('xvTermFlash');
+const tlIds = ['xvT1','xvT2','xvT3','xvT4'];
+
+function resetTimeline(){ tlIds.forEach(id => document.getElementById(id).classList.remove('on')); }
+function playTimeline(){
+  resetTimeline();
+  tlIds.forEach((id, i)=>setTimeout(()=>document.getElementById(id).classList.add('on'), 150 + i * 260));
+  flashBox.classList.remove('xv-pulse');
+  void flashBox.offsetWidth;
+  flashBox.classList.add('xv-pulse');
+}
+if(status2El && 'MutationObserver' in window){
+  new MutationObserver(()=>{
+    const danger = status2El.classList.contains('danger');
+    if(danger && !tlState){ tlState = true; playTimeline(); }
+    if(!danger && tlState){ tlState = false; resetTimeline(); }
+  }).observe(status2El, {attributes:true, attributeFilter:['class']});
+}
+
+/* ================= staggered reveals ================= */
+function staggerIn(els, step){
+  if(!els.length) return;
+  if('IntersectionObserver' in window){
+    const io = new IntersectionObserver((entries)=>{
+      entries.forEach(entry=>{
+        if(entry.isIntersecting){
+          els.forEach((el, i)=>setTimeout(()=>el.classList.add('show'), i * step));
+          io.disconnect();
+        }
+      });
+    }, {threshold:.25});
+    io.observe(els[0]);
+  } else {
+    els.forEach(el=>el.classList.add('show'));
+  }
+}
+staggerIn(['op1','op2','op3','op4','op5','op6'].map(id=>document.getElementById(id)).filter(Boolean), 110);
+staggerIn(['xvCtx1','xvCtx2','xvCtx3'].map(id=>document.getElementById(id)).filter(Boolean), 140);
+
+/* chain steps in step 8 */
+(function(){
+  const steps = ['cs1','cs2','cs3','cs4'].map(id=>document.getElementById(id)).filter(Boolean);
+  if(!steps.length) return;
+  if('IntersectionObserver' in window){
+    const io = new IntersectionObserver((entries)=>{
+      entries.forEach(entry=>{
+        if(entry.isIntersecting){
+          steps.forEach((el, i)=>setTimeout(()=>el.classList.add('show'), i * 180));
+          io.disconnect();
+        }
+      });
+    }, {threshold:.4});
+    io.observe(steps[0]);
+  } else {
+    steps.forEach(el=>el.classList.add('show'));
+  }
+})();
+
+/* ================= boot ================= */
+render(liveInput.value);
+playBoundary(liveInput.value);
+placeMarker(curR, curC);
+runEnumInitialChips();
+
+function runEnumInitialChips(){
+  const row = document.getElementById('enumRow');
+  SWEEP.forEach(s=>{
+    const chip = document.createElement('span');
+    chip.className = 'id-chip';
+    chip.id = 'chip' + s.id;
+    chip.textContent = s.id;
+    row.appendChild(chip);
+  });
+}
+</script>
+</body>
+</html>
